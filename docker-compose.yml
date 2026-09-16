@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Base de Datos PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: venfi_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: venfi
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: venfi_secure_db_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/src/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d venfi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Servidor Backend Node.js / Express / TypeScript
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: venfi_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:5173
+      DATABASE_URL: postgresql://postgres:venfi_secure_db_password_2026@postgres:5432/venfi
+      JWT_SECRET: venfi_jwt_super_secret_access_key_2026_matrix_dark
+      JWT_REFRESH_SECRET: venfi_jwt_super_secret_refresh_key_2026_matrix_dark
+      BINANCE_PAY_API_KEY: binance_pay_test_api_key_venfi
+      BINANCE_PAY_SECRET_KEY: binance_pay_test_secret_key_venfi
+      BINANCE_PAY_MERCHANT_ID: 284910482
+    ports:
+      - "5000:5000"
+
+  # Servidor Frontend Vite / Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: venfi_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "5173:80"
+
+volumes:
+  pgdata:
+    driver: local

@@ -1,0 +1,294 @@
+export const initialExchangeRates = {
+  bcv: {
+    name: 'Dólar BCV (Oficial)',
+    code: 'USD_BCV',
+    rate: 68.45,
+    previousRate: 68.12,
+    change: '+0.48%',
+    isPositive: true,
+    lastUpdate: '26 Ago 2026 - 04:00 PM',
+    dateEffective: 'Valor oficial fijado por el Banco Central de Venezuela',
+    source: 'Banco Central de Venezuela (BCV)'
+  },
+  paralelo: {
+    name: 'Dólar Paralelo (Monitor)',
+    code: 'USD_PARALELO',
+    rate: 79.80,
+    previousRate: 79.10,
+    change: '+0.88%',
+    isPositive: true,
+    lastUpdate: '26 Ago 2026 - 01:00 PM',
+    source: 'Promedio Mercado Paralelo / EnParaleloVzla'
+  },
+  euroBcv: {
+    name: 'Euro BCV (Oficial)',
+    code: 'EUR_BCV',
+    rate: 74.30,
+    previousRate: 74.05,
+    change: '+0.34%',
+    isPositive: true,
+    lastUpdate: '26 Ago 2026 - 04:00 PM',
+    source: 'BCV Oficial'
+  },
+  usdtBinance: {
+    name: 'Binance P2P (USDT)',
+    code: 'USDT_VES',
+    rate: 79.95,
+    previousRate: 79.50,
+    change: '+0.57%',
+    isPositive: true,
+    lastUpdate: 'En tiempo real (P2P)',
+    source: 'Binance P2P Market'
+  }
+};
+
+export const initialRemittanceProviders = [
+  {
+    id: 'binance',
+    name: 'Binance P2P (USDT)',
+    badge: 'MEJOR TASA & INSTANTÁNEO',
+    badgeType: 'emerald',
+    rate: 79.95,
+    feePercent: 0.0,
+    fixedFee: 0.0,
+    speed: 'Inmediato (5 - 15 min)',
+    paymentMethods: ['PagoMóvil', 'Transferencia Banesco/Mercantil'],
+    rating: 4.9,
+    recommended: true
+  },
+  {
+    id: 'zoom',
+    name: 'Zoom Envíos / Western Union',
+    badge: 'RETIRO EN TAQUILLA',
+    badgeType: 'blue',
+    rate: 68.45,
+    feePercent: 4.5,
+    fixedFee: 2.0,
+    speed: 'Mismo día (1 - 4 horas)',
+    paymentMethods: ['Retiro USD en efectivo', 'PagoMóvil'],
+    rating: 4.6,
+    recommended: false
+  },
+  {
+    id: 'moneygram',
+    name: 'MoneyGram Venezuela',
+    badge: 'RED BANCARIA',
+    badgeType: 'silver',
+    rate: 68.45,
+    feePercent: 5.0,
+    fixedFee: 1.5,
+    speed: '1 a 24 horas',
+    paymentMethods: ['Depósito en Cuenta', 'Taquilla'],
+    rating: 4.4,
+    recommended: false
+  },
+  {
+    id: 'airtm',
+    name: 'Airtm Cashier',
+    badge: 'MULTIMONEDA',
+    badgeType: 'silver',
+    rate: 78.50,
+    feePercent: 2.8,
+    fixedFee: 0.8,
+    speed: '10 - 30 min',
+    paymentMethods: ['PagoMóvil', 'Zelle', 'Bancolombia'],
+    rating: 4.5,
+    recommended: false
+  }
+];
+
+export const initialRankingSlots = [
+  {
+    position: 1,
+    tier: 'gold',
+    businessName: 'ElectroCaracas Express ⚡',
+    slogan: 'Los mejores precios en iPhone, PlayStation 5 y Laptops con envíos a toda Venezuela y garantía de 1 año.',
+    category: 'Tecnología & Retail',
+    url: 'https://instagram.com/electrocaracas',
+    amountPaid: 15.00,
+    clicks: 3420,
+    impressions: 48920,
+    expiresInHours: 14,
+    avatar: '⚡',
+    verified: true,
+    tags: ['PagoMóvil', 'Zelle', 'Binance Pay', 'Envíos Nacionales']
+  },
+  {
+    position: 2,
+    tier: 'silver',
+    businessName: 'VenRemesas Direct 🇻🇪🇺🇸',
+    slogan: 'Envía dinero desde EE.UU., España y Chile con la mejor tasa del mercado. Acreditación en 5 minutos.',
+    category: 'Finanzas & Remesas',
+    url: 'https://venremesas.com',
+    amountPaid: 10.00,
+    clicks: 1890,
+    impressions: 29400,
+    expiresInHours: 8,
+    avatar: '💸',
+    verified: true,
+    tags: ['Zelle', 'Banesco', 'Cero Comisiones']
+  },
+  {
+    position: 3,
+    tier: 'silver',
+    businessName: 'CriptoTrader VE Academy 📈',
+    slogan: 'Aprende trading de futuros y arbitraje P2P en Binance. Comunidad VIP con más de 3,500 miembros activos.',
+    category: 'Educación & Cripto',
+    url: 'https://t.me/criptotradervip',
+    amountPaid: 10.00,
+    clicks: 1450,
+    impressions: 24100,
+    expiresInHours: 19,
+    avatar: '📊',
+    verified: true,
+    tags: ['Señales Diarias', 'Comunidad Telegram']
+  },
+  {
+    position: 4,
+    tier: 'dark',
+    businessName: 'Repuestos Automotrices El Ávila 🚗',
+    slogan: 'Especialistas en tren delantero, motores y suspensión para Toyota, Ford y Chevrolet.',
+    category: 'Automotriz',
+    url: 'https://repuestosavila.com',
+    amountPaid: 5.00,
+    clicks: 890,
+    impressions: 14200,
+    expiresInHours: 6,
+    avatar: '🔧',
+    verified: false,
+    tags: ['Delivery Caracas', 'Zelle']
+  },
+  {
+    position: 5,
+    tier: 'dark',
+    businessName: 'TuViaje Margarita & Los Roques ✈️',
+    slogan: 'Paquetes turísticos todo incluido con boletos aéreos y hospedaje de lujo.',
+    category: 'Turismo & Viajes',
+    url: 'https://tuviajemargarita.ve',
+    amountPaid: 5.00,
+    clicks: 760,
+    impressions: 11800,
+    expiresInHours: 11,
+    avatar: '🏖️',
+    verified: true,
+    tags: ['Boletos Aéreos', 'Posadas VIP']
+  },
+  {
+    position: 6,
+    tier: 'dark',
+    businessName: 'Burger Brothers Caracas 🍔',
+    slogan: 'Las mejores smash burgers con pan brioche artesanal en Las Mercedes y Chacao.',
+    category: 'Gastronomía',
+    url: 'https://instagram.com/burgerbrothersccs',
+    amountPaid: 5.00,
+    clicks: 640,
+    impressions: 9500,
+    expiresInHours: 16,
+    avatar: '🍔',
+    verified: false,
+    tags: ['Yummy', 'PedidosYa']
+  },
+  {
+    position: 7,
+    tier: 'dark',
+    businessName: 'Servicios Jurídicos y Apostillas ⚖️',
+    slogan: 'Gestoría legal exprés de antecedentes penales, títulos universitarios y partidas para emigrar.',
+    category: 'Servicios Legales',
+    url: 'https://apostillasvzla.com',
+    amountPaid: 5.00,
+    clicks: 580,
+    impressions: 8900,
+    expiresInHours: 21,
+    avatar: '📜',
+    verified: true,
+    tags: ['GTU', 'Legalizaciones']
+  },
+  {
+    position: 8,
+    tier: 'dark',
+    businessName: 'Calzados Moda Valencia 👟',
+    slogan: 'Venta al mayor y detal de calzado deportivo importado directo de fábrica.',
+    category: 'Moda & Ropa',
+    url: 'https://modavalencia.shop',
+    amountPaid: 5.00,
+    clicks: 490,
+    impressions: 7200,
+    expiresInHours: 4,
+    avatar: '👟',
+    verified: false,
+    tags: ['Mayoristas', 'Envíos MRW']
+  },
+  {
+    position: 9,
+    tier: 'dark',
+    businessName: 'Ferretería & Construcción Total 🏗️',
+    slogan: 'Materiales eléctricos, tuberías, cemento y pintura con despacho directo a obra.',
+    category: 'Construcción',
+    url: 'https://ferreconstructora.com',
+    amountPaid: 5.00,
+    clicks: 410,
+    impressions: 6100,
+    expiresInHours: 9,
+    avatar: '🧱',
+    verified: false,
+    tags: ['Factura Fiscal', 'Despacho']
+  },
+  {
+    position: 10,
+    tier: 'dark',
+    businessName: 'Espacio Publicitario Disponible ✨',
+    slogan: 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.',
+    category: '¡Tu Marca Aquí!',
+    url: '#',
+    amountPaid: 0.00,
+    clicks: 120,
+    impressions: 4500,
+    expiresInHours: 0,
+    avatar: '🚀',
+    verified: false,
+    tags: ['Puesto Disponible', 'Pautar Ahora']
+  }
+];
+
+export const initialNews = [
+  {
+    id: 1,
+    title: 'BCV inyecta $85 millones a las mesas de cambio para estabilizar la cotización oficial',
+    source: 'Banca y Negocios',
+    time: 'Hace 45 min',
+    category: 'Banca & Finanzas',
+    url: '#'
+  },
+  {
+    id: 2,
+    title: 'Comercio bilateral y transacciones con criptomonedas registran alza de 18% en el último trimestre',
+    source: 'Bloomberg Línea',
+    time: 'Hace 2 horas',
+    category: 'Comercio',
+    url: '#'
+  },
+  {
+    id: 3,
+    title: 'Conoce los nuevos límites de transferencias interbancarias y PagoMóvil emitidos por SUDEBAN',
+    source: 'Finanzas Digital',
+    time: 'Hace 4 horas',
+    category: 'Regulación',
+    url: '#'
+  },
+  {
+    id: 4,
+    title: 'Volumen de remesas familiares hacia Venezuela proyecta superar los $3,800 millones en 2026',
+    source: 'Ecoanalítica',
+    time: 'Hace 6 horas',
+    category: 'Economía',
+    url: '#'
+  }
+];
+
+export const fomoNotifications = [
+  { user: 'Marcos D.', action: 'acaba de pautar por $15', target: 'Puesto #1 VIP', time: 'Hace 2 min' },
+  { user: 'Inversiones Ávila', action: 'renovó su anuncio por 24h', target: 'Puesto #2', time: 'Hace 5 min' },
+  { user: 'TiendaTecno CCS', action: 'subió al ranking con $10', target: 'Puesto #3', time: 'Hace 11 min' },
+  { user: 'Elena G.', action: 'adquirió un slot publicitario', target: 'Puesto #5', time: 'Hace 18 min' },
+  { user: 'CryptoVzla Club', action: 'acaba de pautar con USDT', target: 'Puesto #4', time: 'Hace 24 min' }
+];

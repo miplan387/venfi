@@ -1,0 +1,123 @@
+{
+  "info": {
+    "name": "Venfi API - Colección Oficial Postman / Insomnia",
+    "_postman_id": "a4f6f23f-ce4c-46e7-9c0a-b07a89641e0e",
+    "description": "Colección completa de endpoints para la plataforma Venfi (Venezuela + Finanzas)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "1. Registrar Usuario",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"anunciante@empresa.com\",\n  \"username\": \"anunciante_vip\",\n  \"password\": \"VenfiPass2026!\",\n  \"walletAddress\": \"0x71C...4b9F\"\n}"
+            },
+            "url": { "raw": "http://localhost:5000/api/auth/register", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "2. Iniciar Sesión (Login)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"anunciante@empresa.com\",\n  \"password\": \"VenfiPass2026!\"\n}"
+            },
+            "url": { "raw": "http://localhost:5000/api/auth/login", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "3. Obtener Usuario Actual (GET /me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "http://localhost:5000/api/auth/me", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ranking Publicitario",
+      "item": [
+        {
+          "name": "1. Consultar Top 10 Ranking",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5000/api/ranking", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "ranking"] }
+          }
+        },
+        {
+          "name": "2. Registrar Clic en Posición",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referrer\": \"https://instagram.com\",\n  \"userAgent\": \"Mozilla/5.0 Chrome\"\n}"
+            },
+            "url": { "raw": "http://localhost:5000/api/ranking/click/1", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "ranking", "click", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagos (Binance Pay & Zelle)",
+      "item": [
+        {
+          "name": "1. Crear Orden de Pago ($15 Puesto #1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": 1,\n  \"amountUsd\": 15.00,\n  \"durationHours\": 24,\n  \"businessName\": \"ElectroCaracas Express ⚡\",\n  \"targetUrl\": \"https://instagram.com/electrocaracas\",\n  \"slogan\": \"iPhones sellados con 1 año de garantía y envíos nacionales.\",\n  \"category\": \"Tecnología & Retail\",\n  \"avatar\": \"⚡\",\n  \"paymentMethod\": \"binance\"\n}"
+            },
+            "url": { "raw": "http://localhost:5000/api/payments/create", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "payments", "create"] }
+          }
+        },
+        {
+          "name": "2. Simular Webhook de Binance Pay",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantTradeNo\": \"PAY_1724698000_ABC123\",\n  \"totalFee\": 15.00,\n  \"tradeStatus\": \"SUCCESS\",\n  \"txHash\": \"0x8f7a9d2c1b4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a\"\n}"
+            },
+            "url": { "raw": "http://localhost:5000/api/payments/webhook", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "payments", "webhook"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard & Tasas",
+      "item": [
+        {
+          "name": "1. Dashboard de Anunciante (Métricas + Geo)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "http://localhost:5000/api/user/dashboard", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "user", "dashboard"] }
+          }
+        },
+        {
+          "name": "2. Consultar Tasas en Vivo (BCV, Paralelo, USDT)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:5000/api/rates", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "rates"] }
+          }
+        }
+      ]
+    }
+  ]
+}
