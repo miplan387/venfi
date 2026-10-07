@@ -34,11 +34,11 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
     setTrendModalOpen(true);
   };
 
-  // Calcular la brecha cambiaria entre Paralelo y BCV
+  // Tasas de referencia para indicadores
   const bcvRate = rates?.bcv?.rate || 787.52;
-  const paraleloRate = rates?.paralelo?.rate || 931.28;
-  const gapBs = (paraleloRate - bcvRate).toFixed(2);
-  const gapPercent = (((paraleloRate - bcvRate) / bcvRate) * 100).toFixed(2);
+  const usdtRate = rates?.usdtBinance?.rate || 933.15;
+  const gapBs = Math.abs(usdtRate - bcvRate).toFixed(2);
+  const gapPercent = (((usdtRate - bcvRate) / bcvRate) * 100).toFixed(2);
 
   // Monedas Latam
   const latamRates = rates?.latam || {
@@ -77,23 +77,23 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
               Cotización del Dólar, Euro y Monedas de Latinoamérica
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-              Tasas oficiales del Banco Central de Venezuela, mercado paralelo y monedas de Latinoamérica.
+              Tasas oficiales del Banco Central de Venezuela, referencias internacionales y monedas de Latinoamérica.
             </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {/* Brecha Cambiaria Badge */}
+            {/* Brecha BCV vs USDT Badge */}
             <div style={{
-              background: 'rgba(255, 71, 87, 0.1)',
-              border: '1px solid rgba(255, 71, 87, 0.25)',
+              background: 'rgba(0, 245, 155, 0.08)',
+              border: '1px solid rgba(0, 245, 155, 0.25)',
               padding: '0.45rem 0.85rem',
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Brecha cambiaria:</span>
-              <span className="font-mono" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-coral)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Brecha BCV / USDT:</span>
+              <span className="font-mono" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                 +{gapPercent}% (+Bs. {gapBs})
               </span>
             </div>
@@ -111,10 +111,10 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
           </div>
         </div>
 
-        {/* GRID DE TASAS PRINCIPALES: 1. BCV -> 2. PARALELO -> 3. EURO BCV -> 4. USDT */}
+        {/* GRID DE TASAS PRINCIPALES: 1. BCV USD -> 2. EURO BCV -> 3. BINANCE USDT */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
           gap: '1.25rem',
           marginBottom: '1.5rem'
         }}>
@@ -131,20 +131,7 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
             onOpenTrend={handleOpenTrendModal}
           />
 
-          {/* TARJETA 2: DÓLAR PARALELO */}
-          <RateCard 
-            item={rates?.paralelo || { name: 'Dólar Paralelo', rate: 931.28, change: '+0.88%', direction: 'up', source: 'EnParaleloVzla / Monitor' }}
-            rateKey="paralelo"
-            typeLabel="MERCADO LIBRE"
-            currencySuffix="/ USD"
-            accentColor="var(--color-blue)"
-            glowColor="rgba(96, 165, 250, 0.15)"
-            borderColor="rgba(96, 165, 250, 0.3)"
-            onSelect={() => onSelectRateForConverter('paralelo')}
-            onOpenTrend={handleOpenTrendModal}
-          />
-
-          {/* TARJETA 3: EURO (€) BCV */}
+          {/* TARJETA 2: EURO (€) BCV */}
           <RateCard 
             item={rates?.euroBcv || { name: 'Euro (€) BCV', rate: 919.15, change: '+0.34%', direction: 'up', source: 'Banco Central de Venezuela' }}
             rateKey="euro"
@@ -157,7 +144,7 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
             onOpenTrend={handleOpenTrendModal}
           />
 
-          {/* TARJETA 4: BINANCE P2P USDT */}
+          {/* TARJETA 3: BINANCE P2P USDT */}
           <RateCard 
             item={rates?.usdtBinance || { name: 'Binance USDT', rate: 933.15, change: '+0.57%', direction: 'up', source: 'Binance P2P Market' }}
             rateKey="usdt"

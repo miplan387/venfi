@@ -27,6 +27,7 @@ import {
   CreditCard,
   Copy,
   Check,
+  Globe2,
   Image as ImageIcon
 } from 'lucide-react';
 
@@ -74,6 +75,37 @@ export const AdminCards = ({ onBackToPortal }) => {
   });
   const [methodFieldPairs, setMethodFieldPairs] = useState([{ key: '', value: '' }]);
   const [isSavingMethod, setIsSavingMethod] = useState(false);
+
+  // Casas de Cambio / Proveedores de Remesas
+  const [allRemittanceProviders, setAllRemittanceProviders] = useState([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
+  const [editingProviderKey, setEditingProviderKey] = useState(null);
+  const [providerFormData, setProviderFormData] = useState({
+    key: '',
+    name: '',
+    icon: '🏢',
+    description: '',
+    countries: 'USA, COLOMBIA, ESPAÑA, ITALIA',
+    rate_multiplier: 1.0,
+    rate_usd_bs: 0,
+    buy_rate_multiplier: 0.975,
+    sell_rate_multiplier: 1.000,
+    buy_rate: 0,
+    sell_rate: 0,
+    market_type: 'parallel',
+    commission_percent: 3.5,
+    commission_fixed_usd: 2.0,
+    delivery_time: '24 horas',
+    payment_methods: 'Transferencia EUR, Efectivo EUR',
+    delivery_methods: 'Pago Móvil, Transferencia Bs',
+    rating: 4.5,
+    badge: '',
+    url: '',
+    sort_order: 1,
+    is_active: true
+  });
+  const [isSavingProvider, setIsSavingProvider] = useState(false);
 
   // Modal de Edición
   const [editingCard, setEditingCard] = useState(null);
@@ -147,6 +179,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     fetchPendingPayments();
     fetchBankConfig();
     fetchAllPaymentMethods();
+    fetchAllRemittanceProviders();
   }, []);
 
   const copyToClipboard = (text, fieldName) => {
@@ -434,6 +467,236 @@ export const AdminCards = ({ onBackToPortal }) => {
     }
   };
 
+  // =========================================================================
+  // GESTIÓN DINÁMICA DE CASAS DE CAMBIO / PROVEEDORES DE REMESAS
+  // =========================================================================
+
+  // Cargar casas de cambio / proveedores de remesas
+  const fetchAllRemittanceProviders = async () => {
+    try {
+      setLoadingProviders(true);
+      const res = await fetch('http://localhost:5000/api/remesas/providers', {
+        headers: { 'x-admin-key': 'venfi-admin-2026' }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAllRemittanceProviders(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar proveedores de remesas:', err);
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+
+  // Alternar estado activo / inactivo de un proveedor
+  const handleToggleProviderActive = async (prov) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/remesas/providers/${prov.key}/toggle`, {
+        method: 'PATCH',
+        headers: { 'x-admin-key': 'venfi-admin-2026' }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const updated = json.data;
+        showNotification(`Empresa "${prov.name}" ${updated.is_active ? 'activada' : 'desactivada'} en el comparador.`);
+        setAllRemittanceProviders(prev => prev.map(p => p.key === prov.key ? updated : p));
+      } else {
+        const errJson = await res.json();
+        showNotification(errJson.message || 'Error al cambiar estado de la empresa', 'error');
+      }
+    } catch (err) {
+      showNotification('Error de conexión con el servidor', 'error');
+    }
+  };
+
+  // Abrir modal para crear nuevo proveedor
+  const handleOpenCreateProviderModal = () => {
+    setEditingProviderKey(null);
+    setProviderFormData({
+      key: '',
+      name: '',
+      icon: '🏢',
+      description: '',
+      countries: 'USA, COLOMBIA, ESPAÑA, ITALIA',
+      rate_multiplier: 1.0,
+      rate_usd_bs: 0,
+      buy_rate_multiplier: 0.975,
+      sell_rate_multiplier: 1.000,
+      buy_rate: 0,
+      sell_rate: 0,
+      market_type: 'parallel',
+      commission_percent: 3.5,
+      commission_fixed_usd: 2.0,
+      delivery_time: '24 horas',
+      payment_methods: 'Transferencia, Efectivo EUR/USD',
+      delivery_methods: 'Pago Móvil, Transferencia Bs',
+      rating: 4.5,
+      badge: '',
+      url: '',
+      sort_order: allRemittanceProviders.length + 1,
+      is_active: true
+    });
+    setIsProviderModalOpen(true);
+  };
+
+  // Abrir modal para editar proveedor
+  const handleOpenEditProviderModal = (prov) => {
+    setEditingProviderKey(prov.key);
+    setProviderFormData({
+      key: prov.key,
+      name: prov.name || '',
+      icon: prov.icon || '🏢',
+      description: prov.description || '',
+      countries: Array.isArray(prov.countries) ? prov.countries.join(', ') : (prov.countries || ''),
+      rate_multiplier: prov.rate_multiplier ?? 1.0,
+      rate_usd_bs: prov.rate_usd_bs ?? 0,
+      buy_rate_multiplier: prov.buy_rate_multiplier ?? 0.975,
+      sell_rate_multiplier: prov.sell_rate_multiplier ?? prov.rate_multiplier ?? 1.0,
+      buy_rate: prov.buy_rate ?? 0,
+      sell_rate: prov.sell_rate ?? prov.rate_usd_bs ?? 0,
+      market_type: prov.market_type || 'parallel',
+      commission_percent: prov.commission_percent ?? 0,
+      commission_fixed_usd: prov.commission_fixed_usd ?? 0,
+      delivery_time: prov.delivery_time || '24 horas',
+      payment_methods: Array.isArray(prov.payment_methods) ? prov.payment_methods.join(', ') : (prov.payment_methods || ''),
+      delivery_methods: Array.isArray(prov.delivery_methods) ? prov.delivery_methods.join(', ') : (prov.delivery_methods || ''),
+      rating: prov.rating ?? 4.5,
+      badge: prov.badge || '',
+      url: prov.url || '',
+      sort_order: prov.sort_order ?? 0,
+      is_active: prov.is_active !== undefined ? !!prov.is_active : true
+    });
+    setIsProviderModalOpen(true);
+  };
+
+  // Guardar proveedor (Crear o Actualizar)
+  const handleSaveProvider = async (e) => {
+    if (e) e.preventDefault();
+    if (!providerFormData.name.trim()) {
+      showNotification('El nombre de la casa de cambio es obligatorio', 'error');
+      return;
+    }
+
+    const parseList = (str) => {
+      if (Array.isArray(str)) return str;
+      if (!str) return [];
+      return str.split(',').map(s => s.trim()).filter(Boolean);
+    };
+
+    const sellMultiplier = Number(providerFormData.sell_rate_multiplier) || Number(providerFormData.rate_multiplier) || 1.0;
+    const buyMultiplier = Number(providerFormData.buy_rate_multiplier) || 0.975;
+    const sellRate = Number(providerFormData.sell_rate) || Number(providerFormData.rate_usd_bs) || 0;
+    const buyRate = Number(providerFormData.buy_rate) || 0;
+
+    const payload = {
+      name: providerFormData.name.trim(),
+      icon: providerFormData.icon.trim() || '🏢',
+      description: providerFormData.description.trim(),
+      countries: parseList(providerFormData.countries),
+      rate_multiplier: sellMultiplier,
+      rate_usd_bs: sellRate,
+      buy_rate_multiplier: buyMultiplier,
+      sell_rate_multiplier: sellMultiplier,
+      buy_rate: buyRate,
+      sell_rate: sellRate,
+      market_type: providerFormData.market_type || 'parallel',
+      commission_percent: Number(providerFormData.commission_percent) || 0,
+      commission_fixed_usd: Number(providerFormData.commission_fixed_usd) || 0,
+      delivery_time: providerFormData.delivery_time.trim() || '24 horas',
+      payment_methods: parseList(providerFormData.payment_methods),
+      delivery_methods: parseList(providerFormData.delivery_methods),
+      rating: Number(providerFormData.rating) || 4.5,
+      badge: providerFormData.badge.trim(),
+      url: providerFormData.url.trim(),
+      sort_order: Number(providerFormData.sort_order) || 0,
+      is_active: providerFormData.is_active
+    };
+
+    setIsSavingProvider(true);
+    try {
+      if (editingProviderKey) {
+        const res = await fetch(`http://localhost:5000/api/remesas/providers/${editingProviderKey}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': 'venfi-admin-2026'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showNotification(`Empresa "${payload.name}" actualizada con éxito.`);
+          setIsProviderModalOpen(false);
+          fetchAllRemittanceProviders();
+        } else {
+          const err = await res.json();
+          showNotification(err.message || 'Error al actualizar empresa', 'error');
+        }
+      } else {
+        const key = providerFormData.key.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!key) {
+          showNotification('La clave única identificadora es obligatoria (ej: italcambio)', 'error');
+          setIsSavingProvider(false);
+          return;
+        }
+        const createPayload = { ...payload, key };
+        const res = await fetch('http://localhost:5000/api/remesas/providers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': 'venfi-admin-2026'
+          },
+          body: JSON.stringify(createPayload)
+        });
+        if (res.ok) {
+          showNotification(`Nueva empresa "${payload.name}" agregada con éxito.`);
+          setIsProviderModalOpen(false);
+          fetchAllRemittanceProviders();
+        } else {
+          const err = await res.json();
+          showNotification(err.message || 'Error al crear empresa', 'error');
+        }
+      }
+    } catch (err) {
+      showNotification('Error de conexión con el servidor', 'error');
+    } finally {
+      setIsSavingProvider(false);
+    }
+  };
+
+  // Eliminar proveedor
+  const handleDeleteProvider = async (prov) => {
+    const isCore = ['binance_p2p', 'airtm', 'zoom'].includes(prov.key);
+    if (isCore) {
+      const confirmDeactivate = window.confirm(`"${prov.name}" es una empresa principal del comparador. En lugar de eliminarla, ¿deseas desactivarla para que no aparezca en el comparador de remesas?`);
+      if (confirmDeactivate && prov.is_active) {
+        handleToggleProviderActive(prov);
+      }
+      return;
+    }
+
+    const confirmDelete = window.confirm(`¿Estás seguro de eliminar permanentemente "${prov.name}" del comparador de remesas?`);
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/remesas/providers/${prov.key}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': 'venfi-admin-2026' }
+      });
+      if (res.ok) {
+        showNotification(`"${prov.name}" eliminada correctamente.`);
+        fetchAllRemittanceProviders();
+      } else {
+        const err = await res.json();
+        showNotification(err.message || 'Error al eliminar empresa', 'error');
+      }
+    } catch (err) {
+      showNotification('Error de conexión con el servidor', 'error');
+    }
+  };
+
   // Alternar estado activo / inactivo
   const handleToggleStatus = async (cardId) => {
     try {
@@ -608,11 +871,12 @@ export const AdminCards = ({ onBackToPortal }) => {
                 fetchPendingPayments();
                 fetchBankConfig();
                 fetchAllPaymentMethods();
+                fetchAllRemittanceProviders();
               }}
               className="btn btn-secondary"
               style={{ fontSize: '0.85rem', padding: '0.55rem 1rem' }}
             >
-              <RefreshCw size={15} className={loading || loadingPending || loadingMethods ? 'animate-spin' : ''} />
+              <RefreshCw size={15} className={loading || loadingPending || loadingMethods || loadingProviders ? 'animate-spin' : ''} />
               <span>Sincronizar Todo</span>
             </button>
           </div>
@@ -667,6 +931,38 @@ export const AdminCards = ({ onBackToPortal }) => {
           >
             <Crown size={16} />
             <span>Tarjetas del Ranking (Top 10)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('remesas_providers')}
+            style={{
+              background: activeTab === 'remesas_providers' ? 'rgba(0, 245, 155, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              border: activeTab === 'remesas_providers' ? '1.5px solid var(--color-primary)' : '1px solid var(--border-subtle)',
+              color: activeTab === 'remesas_providers' ? 'var(--color-primary)' : 'var(--text-secondary)',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              fontWeight: 800,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Building size={16} />
+            <span>Casas de Cambio (Remesas)</span>
+            <span style={{
+              background: 'rgba(0, 245, 155, 0.2)',
+              color: 'var(--color-primary)',
+              fontSize: '0.72rem',
+              padding: '0.15rem 0.5rem',
+              borderRadius: '9999px',
+              fontWeight: 800
+            }}>
+              {allRemittanceProviders.filter(p => p.is_active).length}/{allRemittanceProviders.length}
+            </span>
           </button>
 
           <button
@@ -1103,6 +1399,399 @@ export const AdminCards = ({ onBackToPortal }) => {
           </div>
         </div>
         </>
+        )}
+
+        {/* =========================================================================
+            PESTAÑA: GESTIÓN DE CASAS DE CAMBIO Y PROVEEDORES DE REMESAS
+           ========================================================================= */}
+        {activeTab === 'remesas_providers' && (
+          <div>
+            {/* Banner Informativo y Botones de Acción */}
+            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid var(--color-primary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Building size={22} color="var(--color-primary)" />
+                    <span>Gestión de Casas de Cambio y Remesas</span>
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.35rem', margin: 0 }}>
+                    Administra las empresas que aparecen en el Comparador de Remesas (ItalCambio, Angulo López, Insular, Binance, Zoom, etc.). Edita comisiones, tasas y tiempos de entrega.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={fetchAllRemittanceProviders}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+                  >
+                    <RefreshCw size={14} className={loadingProviders ? 'animate-spin' : ''} />
+                    <span>Actualizar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateProviderModal}
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.85rem', padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <Plus size={16} />
+                    <span>Nueva Casa de Cambio</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* KPIs de Proveedores de Remesas */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1.25rem',
+              marginBottom: '2rem'
+            }}>
+              <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Total Empresas
+                </span>
+                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#ffffff', marginTop: '0.2rem' }}>
+                  {allRemittanceProviders.length}
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                  Registradas en sistema
+                </span>
+              </div>
+
+              <div className="glass-panel" style={{ padding: '1.25rem', borderColor: 'rgba(0, 245, 155, 0.3)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Activas en Comparador
+                </span>
+                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-primary)', marginTop: '0.2rem' }}>
+                  {allRemittanceProviders.filter(p => p.is_active).length}
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                  Visibles para los usuarios
+                </span>
+              </div>
+
+              <div className="glass-panel" style={{ padding: '1.25rem', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-blue)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  🏛️ Casas Oficiales (BCV)
+                </span>
+                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-blue)', marginTop: '0.2rem' }}>
+                  {allRemittanceProviders.filter(p => p.market_type === 'official').length}
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                  Reguladas BCV / SUDEBAN
+                </span>
+              </div>
+
+              <div className="glass-panel" style={{ padding: '1.25rem', borderColor: 'rgba(251, 191, 36, 0.3)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  🔄 Mercado Paralelo (USDT)
+                </span>
+                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--color-gold)', marginTop: '0.2rem' }}>
+                  {allRemittanceProviders.filter(p => p.market_type !== 'official').length}
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                  P2P, billeteras y remesadoras
+                </span>
+              </div>
+            </div>
+
+            {/* Listado de Proveedores de Remesas en Tarjetas */}
+            {loadingProviders ? (
+              <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+                <RefreshCw size={36} className="animate-spin" color="var(--color-primary)" style={{ margin: '0 auto 1rem auto' }} />
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Cargando casas de cambio...</p>
+              </div>
+            ) : allRemittanceProviders.length === 0 ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+                <Building size={48} color="var(--text-muted)" style={{ margin: '0 auto 1rem auto' }} />
+                <h4 style={{ color: '#ffffff', fontSize: '1.2rem', fontWeight: 800 }}>No hay casas de cambio configuradas</h4>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '400px', margin: '0.5rem auto 1.5rem auto' }}>
+                  Haz clic en el botón a continuación para registrar la primera empresa de remesas.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenCreateProviderModal}
+                  className="btn btn-primary"
+                >
+                  <Plus size={16} />
+                  <span>Agregar Primera Empresa</span>
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+                gap: '1.5rem',
+                marginBottom: '2rem'
+              }}>
+                {allRemittanceProviders.map((prov) => {
+                  const isCore = ['binance_p2p', 'airtm', 'zoom'].includes(prov.key);
+                  const countriesList = Array.isArray(prov.countries) ? prov.countries : [];
+
+                  return (
+                    <div
+                      key={prov.key}
+                      className="glass-panel"
+                      style={{
+                        padding: '1.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        border: prov.is_active 
+                          ? '1.5px solid rgba(0, 245, 155, 0.35)' 
+                          : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: prov.is_active
+                          ? 'linear-gradient(135deg, rgba(6, 10, 18, 0.85) 0%, rgba(15, 23, 42, 0.7) 100%)'
+                          : 'rgba(6, 10, 18, 0.5)',
+                        opacity: prov.is_active ? 1 : 0.75,
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div>
+                        {/* Cabecera de la Tarjeta del Proveedor */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '12px',
+                              background: 'rgba(255, 255, 255, 0.06)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '1.5rem'
+                            }}>
+                              {prov.icon || '🏢'}
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                                  {prov.name}
+                                </h4>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  padding: '0.1rem 0.4rem',
+                                  borderRadius: '4px',
+                                  background: 'rgba(255, 255, 255, 0.08)',
+                                  color: 'var(--text-muted)',
+                                  fontWeight: 700
+                                }}>
+                                  #{prov.sort_order}
+                                </span>
+                              </div>
+                              <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                key: {prov.key} {isCore && '• Principal'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Toggle Switch Activo / Inactivo */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleProviderActive(prov)}
+                              title={prov.is_active ? 'Desactivar empresa' : 'Activar empresa'}
+                              style={{
+                                width: '48px',
+                                height: '26px',
+                                borderRadius: '9999px',
+                                background: prov.is_active ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.15)',
+                                border: 'none',
+                                position: 'relative',
+                                cursor: 'pointer',
+                                transition: 'background 0.25s',
+                                padding: 0
+                              }}
+                            >
+                              <div style={{
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                background: '#0f172a',
+                                position: 'absolute',
+                                top: '3px',
+                                left: prov.is_active ? '25px' : '3px',
+                                transition: 'left 0.25s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                {prov.is_active ? (
+                                  <Check size={12} color="var(--color-primary)" strokeWidth={3} />
+                                ) : (
+                                  <X size={12} color="#94a3b8" strokeWidth={3} />
+                                )}
+                              </div>
+                            </button>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              textTransform: 'uppercase',
+                              color: prov.is_active ? 'var(--color-primary)' : 'var(--text-muted)'
+                            }}>
+                              {prov.is_active ? 'Activo' : 'Inactivo'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Descripción */}
+                        <p style={{
+                          fontSize: '0.82rem',
+                          color: 'var(--text-secondary)',
+                          lineHeight: '1.4',
+                          margin: '0 0 0.85rem 0'
+                        }}>
+                          {prov.description || 'Sin descripción configurada.'}
+                        </p>
+
+                        {/* Badges de Información */}
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            background: prov.market_type === 'official' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                            color: prov.market_type === 'official' ? '#38bdf8' : '#fbbf24',
+                            border: prov.market_type === 'official' ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(251, 191, 36, 0.35)'
+                          }}>
+                            {prov.market_type === 'official' ? '🏛️ OFICIAL (BCV)' : '🔄 PARALELO (USDT)'}
+                          </span>
+                          {prov.badge && (
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '4px',
+                              background: 'rgba(0, 245, 155, 0.12)',
+                              color: 'var(--color-primary)',
+                              border: '1px solid rgba(0, 245, 155, 0.25)'
+                            }}>
+                              {prov.badge}
+                            </span>
+                          )}
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)'
+                          }}>
+                            ⏱️ {prov.delivery_time}
+                          </span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            background: 'rgba(251, 191, 36, 0.12)',
+                            color: 'var(--color-gold)',
+                            border: '1px solid rgba(251, 191, 36, 0.25)'
+                          }}>
+                            ⭐ {prov.rating || 4.5}/5.0
+                          </span>
+                        </div>
+
+                        {/* Parámetros Financieros */}
+                        <div style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.06)',
+                          borderRadius: '8px',
+                          padding: '0.75rem',
+                          marginBottom: '0.85rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.3rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Tipo Mercado:</span>
+                            <span style={{ color: prov.market_type === 'official' ? '#38bdf8' : '#fbbf24', fontWeight: 800 }}>
+                              {prov.market_type === 'official' ? 'Oficial (Base BCV)' : 'Paralelo (Base USDT)'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.3rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Comisión:</span>
+                            <span className="font-mono" style={{ color: '#ffffff', fontWeight: 700 }}>
+                              {prov.commission_percent}% {prov.commission_fixed_usd > 0 ? `+ $${Number(prov.commission_fixed_usd).toFixed(2)}` : ''}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.3rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Tasa Compra:</span>
+                            <span className="font-mono" style={{ color: 'var(--color-blue)', fontWeight: 700 }}>
+                              x{prov.buy_rate_multiplier ?? 0.975} ({((prov.buy_rate_multiplier ?? 0.975) * 100).toFixed(1)}% {prov.market_type === 'official' ? 'BCV' : 'USDT'})
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.3rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Tasa Venta (Efectiva):</span>
+                            <span className="font-mono" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
+                              {prov.sell_rate > 0 || prov.rate_usd_bs > 0 ? `Bs. ${prov.sell_rate || prov.rate_usd_bs}` : `x${prov.sell_rate_multiplier ?? prov.rate_multiplier ?? 1.0} (${((prov.sell_rate_multiplier ?? prov.rate_multiplier ?? 1.0) * 100).toFixed(1)}% ${prov.market_type === 'official' ? 'BCV' : 'USDT'})`}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Países Cobertura:</span>
+                            <span style={{ color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {countriesList.length > 0 ? countriesList.join(', ') : 'Global / Todos'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones de Acción */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: '0.6rem',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        paddingTop: '0.85rem'
+                      }}>
+                        {prov.url && (
+                          <a
+                            href={prov.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary"
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
+                          >
+                            <ExternalLink size={13} />
+                            <span>Sitio</span>
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditProviderModal(prov)}
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                        >
+                          <Edit3 size={14} />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProvider(prov)}
+                          className="btn btn-secondary"
+                          style={{
+                            fontSize: '0.8rem',
+                            padding: '0.4rem 0.8rem',
+                            color: 'var(--color-coral)',
+                            borderColor: 'rgba(239, 68, 68, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem'
+                          }}
+                          title="Eliminar empresa"
+                        >
+                          <Trash2 size={14} />
+                          <span>Eliminar</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* =========================================================================
@@ -2311,8 +3000,537 @@ export const AdminCards = ({ onBackToPortal }) => {
         )}
 
         {/* =========================================================================
-            MODAL DE CREACIÓN / EDICIÓN DE MÉTODO DE PAGO
+            MODAL DE CREACIÓN / EDICIÓN DE CASA DE CAMBIO / PROVEEDOR DE REMESAS
            ========================================================================= */}
+        {isProviderModalOpen && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(3, 7, 18, 0.85)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 110,
+            padding: '1.5rem',
+            overflowY: 'auto'
+          }}>
+            <div className="glass-panel" style={{
+              maxWidth: '680px',
+              width: '100%',
+              padding: '2rem',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              border: '1.5px solid var(--color-primary)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)'
+            }}>
+              {/* Header Modal */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: 'rgba(0, 245, 155, 0.15)',
+                    border: '1px solid var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.3rem'
+                  }}>
+                    {providerFormData.icon || '🏢'}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                      {editingProviderKey ? `Editar Empresa: ${providerFormData.name}` : 'Registrar Nueva Casa de Cambio'}
+                    </h3>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {editingProviderKey ? 'Actualiza tasas, comisiones y opciones de entrega' : 'Agrega una nueva empresa al comparador en tiempo real'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsProviderModalOpen(false)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProvider}>
+                {/* Fila 1: Key e Icono */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Clave Identificadora (Key)*:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej: italcambio, angulo_lopez, insular"
+                      value={providerFormData.key}
+                      disabled={!!editingProviderKey}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                      required
+                      style={{
+                        width: '100%',
+                        background: editingProviderKey ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: editingProviderKey ? 'var(--text-muted)' : '#ffffff',
+                        fontSize: '0.85rem',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Icono (Emoji)*:
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      placeholder="🇮🇹"
+                      value={providerFormData.icon}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, icon: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '1.1rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fila 2: Nombre comercial y Orden */}
+                <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Nombre Comercial de la Empresa*:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej: ItalCambio"
+                      value={providerFormData.name}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, name: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Orden (#):
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      value={providerFormData.sort_order}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, sort_order: parseInt(e.target.value) || 0 })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fila: Tipo de Mercado / Regulación */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                    Tipo de Mercado & Regulación*:
+                  </label>
+                  <select
+                    value={providerFormData.market_type || 'parallel'}
+                    onChange={(e) => setProviderFormData({ ...providerFormData, market_type: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: providerFormData.market_type === 'official' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(251, 191, 36, 0.12)',
+                      border: providerFormData.market_type === 'official' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(251, 191, 36, 0.4)',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.85rem',
+                      color: providerFormData.market_type === 'official' ? '#38bdf8' : '#fbbf24',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="parallel" style={{ background: '#0f172a', color: '#fbbf24' }}>
+                      🔄 Mercado Paralelo / P2P (Tasa Base USDT ~946 Bs)
+                    </option>
+                    <option value="official" style={{ background: '#0f172a', color: '#38bdf8' }}>
+                      🏛️ Casa de Cambio Oficial (Regulada BCV / SUDEBAN - Tasa Base BCV ~617 Bs)
+                    </option>
+                  </select>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    {providerFormData.market_type === 'official'
+                      ? '🏛️ Las casas oficiales (ItalCambio, Angulo López, Insular) calculan sus tasas a partir del Dólar Oficial BCV.'
+                      : '🔄 Los operadores paralelos (Binance, Airtm, Zinli, Zoom) calculan sus tasas a partir del Dólar USDT Paralelo.'}
+                  </span>
+                </div>
+
+                {/* Fila 3: Descripción y Badge */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Descripción de la Empresa:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej: Envíos desde Italia y Europa a Venezuela"
+                      value={providerFormData.description}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, description: e.target.value })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Badge Destacado:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej: ESPECIALISTA EUROPA"
+                      value={providerFormData.badge}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, badge: e.target.value })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fila 4: Países de Cobertura */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                    Países de Cobertura (separados por coma):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ITALIA, ESPAÑA, EUROPA, USA, COLOMBIA"
+                    value={providerFormData.countries}
+                    onChange={(e) => setProviderFormData({ ...providerFormData, countries: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.85rem',
+                      color: '#ffffff',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                    Indica los países donde opera (ej: ITALIA, ESPAÑA, USA, COLOMBIA, PERU, CHILE, BRASIL, ARGENTINA) o deja vacío para todos.
+                  </span>
+                </div>
+
+                {/* Fila 5: Comisiones y Multiplicadores de Compra / Venta */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Comisión Porcentual (%):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={providerFormData.commission_percent}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, commission_percent: parseFloat(e.target.value) || 0 })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Comisión Fija ($ USD):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={providerFormData.commission_fixed_usd}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, commission_fixed_usd: parseFloat(e.target.value) || 0 })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-blue)', marginBottom: '0.35rem' }}>
+                      Multiplicador Tasa Compra (vs {providerFormData.market_type === 'official' ? 'BCV Oficial' : 'USDT Paralelo'}):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min={0.5}
+                      max={1.5}
+                      value={providerFormData.buy_rate_multiplier}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, buy_rate_multiplier: parseFloat(e.target.value) || 0.975 })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: 'var(--color-blue)',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Lo que paga el operador al comprar divisa (ej: 0.975)
+                    </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '0.35rem' }}>
+                      Multiplicador Tasa Venta / Efectiva (vs {providerFormData.market_type === 'official' ? 'BCV Oficial' : 'USDT Paralelo'}):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min={0.5}
+                      max={1.5}
+                      value={providerFormData.sell_rate_multiplier}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, sell_rate_multiplier: parseFloat(e.target.value) || 1.0, rate_multiplier: parseFloat(e.target.value) || 1.0 })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(0, 245, 155, 0.3)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: 'var(--color-primary)',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                      Tasa de entrega al familiar en Venezuela (ej: 1.000)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fila 6: Tiempo de Entrega y Calificación */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Tiempo Estimado de Entrega:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ej: 24 - 48 horas"
+                      value={providerFormData.delivery_time}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, delivery_time: e.target.value })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Calificación (1 - 5):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={1}
+                      max={5}
+                      value={providerFormData.rating}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, rating: parseFloat(e.target.value) || 4.5 })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: 'var(--color-gold)',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fila 7: Métodos de Pago y Entrega */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Métodos de Pago aceptados:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Transferencia EUR, Efectivo EUR"
+                      value={providerFormData.payment_methods}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, payment_methods: e.target.value })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                      Métodos de Entrega en Venezuela:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Pago Móvil, Transferencia Bs, Efectivo Bs"
+                      value={providerFormData.delivery_methods}
+                      onChange={(e) => setProviderFormData({ ...providerFormData, delivery_methods: e.target.value })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fila 8: Enlace Oficial / Afiliado */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                    URL Oficial / Afiliado:
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://italcambio.com"
+                    value={providerFormData.url}
+                    onChange={(e) => setProviderFormData({ ...providerFormData, url: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.85rem',
+                      color: '#ffffff',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+
+                {/* Fila 9: Checkbox Activo */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  marginBottom: '1.5rem',
+                  border: '1px solid var(--border-subtle)'
+                }}>
+                  <input
+                    type="checkbox"
+                    id="provider_active"
+                    checked={providerFormData.is_active}
+                    onChange={(e) => setProviderFormData({ ...providerFormData, is_active: e.target.checked })}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="provider_active" style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', cursor: 'pointer' }}>
+                    Empresa activa (Visible en el comparador de remesas en tiempo real)
+                  </label>
+                </div>
+
+                {/* Footer de Acciones del Modal */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1.25rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsProviderModalOpen(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProvider}
+                    className="btn btn-primary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                  >
+                    {isSavingProvider ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                    <span>{editingProviderKey ? 'Guardar Cambios' : 'Registrar Empresa'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
         {isMethodModalOpen && (
           <div style={{
             position: 'fixed',

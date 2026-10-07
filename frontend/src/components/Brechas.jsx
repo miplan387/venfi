@@ -45,15 +45,18 @@ export const Brechas = ({ rates }) => {
   const usdtRate = rates?.usdtBinance?.rate || rates?.usdt?.rate || 933.15;
   const euroRate = rates?.euroBcv?.rate || rates?.euro?.rate || 919.15;
 
-  // Cálculo de brechas con la fórmula: ((tasa1 - tasa2) / tasa2) * 100
+  // Cálculo de brechas con la fórmula: ((tasa1 - tasa2) / tasa2) * 100 y diferencia absoluta en Bs.
   // 1. BCV vs USDT: ((USDT - BCV) / BCV) * 100
   const gapBcvUsdt = ((usdtRate - bcvRate) / bcvRate) * 100;
+  const diffBcvUsdt = Math.abs(usdtRate - bcvRate);
 
   // 2. BCV vs Euro: ((Euro - BCV) / BCV) * 100
   const gapBcvEuro = ((euroRate - bcvRate) / bcvRate) * 100;
+  const diffBcvEuro = Math.abs(euroRate - bcvRate);
 
   // 3. USDT vs Euro: ((USDT - Euro) / Euro) * 100
   const gapUsdtEuro = ((usdtRate - euroRate) / euroRate) * 100;
+  const diffUsdtEuro = Math.abs(usdtRate - euroRate);
 
   const gapsData = [
     {
@@ -64,6 +67,7 @@ export const Brechas = ({ rates }) => {
       rate2Label: 'BCV',
       rate2Value: bcvRate,
       percent: gapBcvUsdt,
+      diffBs: diffBcvUsdt,
       subtext: `El USDT es un ${Math.abs(gapBcvUsdt).toFixed(1)}% ${gapBcvUsdt >= 0 ? 'más caro' : 'más barato'} que el BCV.`
     },
     {
@@ -74,6 +78,7 @@ export const Brechas = ({ rates }) => {
       rate2Label: 'BCV',
       rate2Value: bcvRate,
       percent: gapBcvEuro,
+      diffBs: diffBcvEuro,
       subtext: `El Euro es un ${Math.abs(gapBcvEuro).toFixed(1)}% ${gapBcvEuro >= 0 ? 'más caro' : 'más barato'} que el BCV.`
     },
     {
@@ -84,6 +89,7 @@ export const Brechas = ({ rates }) => {
       rate2Label: 'Euro',
       rate2Value: euroRate,
       percent: gapUsdtEuro,
+      diffBs: diffUsdtEuro,
       subtext: `El USDT es un ${Math.abs(gapUsdtEuro).toFixed(1)}% ${gapUsdtEuro >= 0 ? 'más caro' : 'más barato'} que el Euro.`
     }
   ];
@@ -216,8 +222,16 @@ export const Brechas = ({ rates }) => {
                 </div>
               </div>
 
-              {/* Fila Central: Porcentaje Principal */}
-              <div style={{ marginBottom: '0.65rem' }}>
+              {/* Fila Central: Porcentaje Principal y Diferencia Absoluta en Bs. */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.65rem',
+                  gap: '0.5rem'
+                }}
+              >
                 <div
                   className="font-mono"
                   style={{
@@ -229,6 +243,38 @@ export const Brechas = ({ rates }) => {
                   }}
                 >
                   {formattedPercent}
+                </div>
+
+                <div
+                  style={{
+                    textAlign: 'right',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end'
+                  }}
+                >
+                  <div
+                    className="font-mono"
+                    style={{
+                      fontSize: '1.15rem',
+                      fontWeight: 800,
+                      color: '#ffffff',
+                      letterSpacing: '-0.3px',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Bs. {gap.diffBs.toFixed(2)}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '0.68rem',
+                      color: 'var(--text-muted)',
+                      fontWeight: 600,
+                      marginTop: '0.15rem'
+                    }}
+                  >
+                    Diferencia
+                  </span>
                 </div>
               </div>
 

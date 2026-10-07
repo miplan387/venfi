@@ -35,8 +35,23 @@ export const Terms = ({ onBackToPortal }) => {
             Términos y Condiciones de Servicio
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, lineHeight: 1.6 }}>
-            Última actualización: <strong>26 de agosto de 2026</strong>. Por favor, lea detenidamente estos términos antes de utilizar la plataforma <strong>Venfi</strong> (Venezuela + Finanzas). Al acceder o pautar en el sitio, usted acepta quedar legalmente vinculado por las siguientes cláusulas.
+            Última actualización: <strong>Octubre 2026</strong>. Por favor, lea detenidamente estos términos antes de utilizar la plataforma <strong>Venfi</strong> (Venezuela + Finanzas). Al acceder o pautar en el sitio, usted acepta quedar legalmente vinculado por las siguientes cláusulas.
           </p>
+          <div style={{
+            background: 'rgba(251, 191, 36, 0.08)',
+            borderLeft: '4px solid var(--color-gold)',
+            borderTop: '1px solid rgba(251, 191, 36, 0.25)',
+            borderRight: '1px solid rgba(251, 191, 36, 0.25)',
+            borderBottom: '1px solid rgba(251, 191, 36, 0.25)',
+            padding: '1rem 1.25rem',
+            borderRadius: '8px',
+            marginTop: '1.25rem',
+            fontSize: '0.9rem',
+            color: '#f8fafc',
+            lineHeight: 1.6
+          }}>
+            ⚠️ AVISO LEGAL: Las tasas mostradas en Venfi corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfi es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
+          </div>
         </div>
 
         {/* Cláusulas Legales Detalladas */}
@@ -65,10 +80,10 @@ export const Terms = ({ onBackToPortal }) => {
           {/* Cláusula 2 */}
           <div className="glass-panel" style={{ padding: '2rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: 'var(--color-gold)' }}>2.</span> Tasas Referenciales y Exención de Asesoría Financiera
+              <span style={{ color: 'var(--color-gold)' }}>2.</span> Tasas Oficiales, Referenciales y Exención de Asesoría Financiera
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, margin: 0 }}>
-              Todas las cotizaciones de divisas (Dólar BCV, Dólar Paralelo, Binance P2P USDT, Euro Oficial) y cotizaciones de remesas mostradas en este portal se extraen de fuentes de información públicas, agregadores y mercados P2P en tiempo real con fines estrictamente <strong>informativos e ilustrativos</strong>.
+              Todas las cotizaciones de divisas (Dólar BCV Oficial, Euro BCV Oficial, Binance P2P USDT) y cotizaciones de remesas mostradas en este portal corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo.
             </p>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, marginTop: '0.75rem', margin: 0 }}>
               Venfi no es una entidad bancaria, casa de cambio regulada por SUDEBAN, ni un intermediario financiero. El contenido no debe interpretarse bajo ninguna circunstancia como una recomendación de inversión, asesoría contable o directriz fiscal.

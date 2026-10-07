@@ -402,7 +402,7 @@ export const Header = ({
               onClick={() => setMobileMenuOpen(false)}
               style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
             >
-              Monitor de Tasas (BCV / Paralelo / Euro)
+              Monitor de Tasas (BCV / Euro / USDT)
             </a>
             <a 
               href="#convertidor" 

@@ -62,9 +62,25 @@ export const TermsModal = ({ isOpen, onClose }) => {
         <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.5rem' }}>
           Términos y Condiciones de Uso — Venfi
         </h3>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
           Actividad Económica: Código SENIAT 8299 (Servicios empresariales y de publicidad).
         </p>
+
+        <div style={{
+          background: 'rgba(251, 191, 36, 0.08)',
+          borderLeft: '4px solid var(--color-gold)',
+          borderTop: '1px solid rgba(251, 191, 36, 0.25)',
+          borderRight: '1px solid rgba(251, 191, 36, 0.25)',
+          borderBottom: '1px solid rgba(251, 191, 36, 0.25)',
+          padding: '0.85rem 1rem',
+          borderRadius: '8px',
+          marginBottom: '1.5rem',
+          fontSize: '0.82rem',
+          color: '#f8fafc',
+          lineHeight: 1.55
+        }}>
+          ⚠️ AVISO LEGAL: Las tasas mostradas en Venfi corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfi es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
+        </div>
 
         <div style={{
           display: 'flex',
@@ -91,7 +107,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
               2. Deslinde de Responsabilidad Cambiaria (Disclaimer)
             </h4>
             <p>
-              Las cotizaciones correspondientes al Banco Central de Venezuela (BCV), Dólar Paralelo, Euro y Criptoactivos son obtenidas de fuentes públicas abiertas. Venfi no interviene, fija ni garantiza cotizaciones. Cualquier transacción comercial realizada entre usuarios en base a estas referencias es responsabilidad exclusiva de las partes.
+              Las cotizaciones correspondientes al Banco Central de Venezuela (BCV), Euro Oficial y Criptoactivos (Binance USDT) son obtenidas de fuentes públicas abiertas. Venfi no interviene, fija ni garantiza cotizaciones. Cualquier transacción comercial realizada entre usuarios en base a estas referencias es responsabilidad exclusiva de las partes.
             </p>
           </div>
 

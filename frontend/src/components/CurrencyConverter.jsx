@@ -30,7 +30,6 @@ export const CurrencyConverter = ({ rates, selectedRateKey = 'bcv' }) => {
 
   // Tasas de cambio disponibles
   const usdBcvRate = rates?.bcv?.rate || 787.52;
-  const usdParaleloRate = rates?.paralelo?.rate || 931.28;
   const usdUsdtRate = rates?.usdtBinance?.rate || 933.15;
   const euroBcvRate = rates?.euroBcv?.rate || rates?.euro?.rate || 919.15;
 
@@ -44,8 +43,6 @@ export const CurrencyConverter = ({ rates, selectedRateKey = 'bcv' }) => {
   // Obtener la tasa de referencia USD activa
   const getActiveUsdRate = () => {
     switch (activeRateKey) {
-      case 'paralelo':
-        return { rate: usdParaleloRate, label: 'Dólar Paralelo' };
       case 'usdt':
         return { rate: usdUsdtRate, label: 'Binance USDT' };
       case 'euro':
@@ -198,23 +195,6 @@ export const CurrencyConverter = ({ rates, selectedRateKey = 'bcv' }) => {
                 }}
               >
                 BCV ({usdBcvRate.toFixed(2)})
-              </button>
-
-              <button
-                onClick={() => setActiveRateKey('paralelo')}
-                style={{
-                  background: activeRateKey === 'paralelo' ? 'var(--color-blue)' : 'transparent',
-                  color: activeRateKey === 'paralelo' ? '#030712' : 'var(--text-secondary)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.85rem',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Paralelo ({usdParaleloRate.toFixed(2)})
               </button>
 
               <button

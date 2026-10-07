@@ -51,13 +51,6 @@ export const RateTrendModal = ({ isOpen, onClose, rateKey = 'bcv', item = {} }) 
       glowColor: 'rgba(0, 245, 155, 0.25)',
       suffix: '/ USD'
     },
-    paralelo: {
-      name: 'Dólar Paralelo',
-      label: 'PROMEDIO MERCADO LIBRE / MONITOR',
-      color: '#60a5fa',
-      glowColor: 'rgba(96, 165, 250, 0.25)',
-      suffix: '/ USD'
-    },
     euro: {
       name: 'Euro (€) BCV Oficial',
       label: 'OFICIAL UNIÓN EUROPEA BCV',

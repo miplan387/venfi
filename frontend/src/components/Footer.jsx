@@ -64,7 +64,7 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
                 Cotización Dólar BCV Oficial
               </a>
               <a href="#tasas" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
-                Dólar Paralelo & USDT Binance
+                Euro BCV & USDT Binance
               </a>
               <a href="#convertidor" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
                 Calculadora USD ↔ VES y Vueltos
@@ -171,14 +171,16 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem',
-          fontSize: '0.75rem',
+          fontSize: '0.78rem',
           color: 'var(--text-muted)',
-          textAlign: 'center'
+          textAlign: 'center',
+          maxWidth: '960px',
+          margin: '0 auto'
         }}>
-          <p>
-            <strong>Descargo de Responsabilidad:</strong> Los indicadores financieros mostrados en Venfi tienen un propósito estrictamente informativo y referencial recopilado de fuentes públicas (BCV, EnParaleloVzla, Binance P2P). Venfi no presta servicios financieros, cambiarios ni de custodia.
+          <p style={{ lineHeight: 1.6, background: 'rgba(251, 191, 36, 0.05)', padding: '0.85rem 1.25rem', borderRadius: '10px', border: '1px solid rgba(251, 191, 36, 0.2)', color: '#e2e8f0' }}>
+            ⚠️ AVISO LEGAL: Las tasas mostradas en Venfi corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfi es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', marginTop: '0.5rem' }}>
             <span>© {new Date().getFullYear()} Venfi. Construido con</span>
             <Heart size={12} color="#ff4757" fill="#ff4757" />
             <span>para Venezuela y el mundo.</span>

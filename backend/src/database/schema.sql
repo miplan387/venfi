@@ -154,4 +154,35 @@ CREATE TABLE IF NOT EXISTS payment_methods (
 
 CREATE INDEX IF NOT EXISTS idx_payment_methods_active_sort ON payment_methods(is_active, sort_order ASC);
 
+-- 9. TABLA: remittance_providers (Casas de Cambio y Proveedores de Remesas Dinámicos)
+CREATE TABLE IF NOT EXISTS remittance_providers (
+  id SERIAL PRIMARY KEY,
+  key VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  icon VARCHAR(10) DEFAULT '🏢',
+  description TEXT,
+  countries JSONB DEFAULT '[]',
+  rate_multiplier DECIMAL(6,4) DEFAULT 1.0,
+  rate_usd_bs DECIMAL(10,4) DEFAULT 0,
+  buy_rate_multiplier DECIMAL(5,4) DEFAULT 0.9750,
+  sell_rate_multiplier DECIMAL(5,4) DEFAULT 1.0000,
+  buy_rate DECIMAL(10,4) DEFAULT 0,
+  sell_rate DECIMAL(10,4) DEFAULT 0,
+  commission_percent DECIMAL(5,2) DEFAULT 0,
+  commission_fixed_usd DECIMAL(10,2) DEFAULT 0,
+  delivery_time VARCHAR(100) DEFAULT '24 horas',
+  payment_methods JSONB DEFAULT '[]',
+  delivery_methods JSONB DEFAULT '[]',
+  rating DECIMAL(3,1) DEFAULT 4.5,
+  badge VARCHAR(100),
+  url VARCHAR(255),
+  market_type VARCHAR(20) DEFAULT 'parallel' CHECK (market_type IN ('official', 'parallel')),
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_remittance_providers_active_sort ON remittance_providers(is_active, sort_order ASC);
+
 

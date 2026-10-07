@@ -82,9 +82,12 @@ export function AppContent() {
             
             // Actualizar tasas en el comparador de remesas
             setProviders(prev => prev.map(p => {
-              if (p.id === 'binance') return { ...p, rate: json.data.usdtBinance.rate };
-              if (p.id === 'zoom' || p.id === 'moneygram') return { ...p, rate: json.data.bcv.rate };
-              if (p.id === 'airtm') return { ...p, rate: Number((json.data.paralelo.rate * 0.985).toFixed(2)) };
+              if (p.id === 'binance') return { ...p, rate: json.data?.usdtBinance?.rate || 79.95 };
+              if (p.id === 'zoom' || p.id === 'moneygram') return { ...p, rate: json.data?.bcv?.rate || 68.45 };
+              if (p.id === 'airtm') return { ...p, rate: Number(((json.data?.paralelo?.rate || json.data?.usdtBinance?.rate || 79.95) * 0.985).toFixed(2)) };
+              if (p.id === 'italcambio') return { ...p, rate: Number(((json.data?.usdtBinance?.rate || 79.95) * 0.965).toFixed(2)) };
+              if (p.id === 'angulo_lopez') return { ...p, rate: Number(((json.data?.usdtBinance?.rate || 79.95) * 0.960).toFixed(2)) };
+              if (p.id === 'insular') return { ...p, rate: Number(((json.data?.usdtBinance?.rate || 79.95) * 0.955).toFixed(2)) };
               return p;
             }));
           }

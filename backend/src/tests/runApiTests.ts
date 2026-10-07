@@ -170,8 +170,26 @@ const runTests = async () => {
     assertTest('GET /api/weather/cities -> Clima multi-ciudad (Caracas, Maracaibo, Valencia)', citiesRes.status === 200 && citiesRes.data.data.length === 3);
 
     // 13. Comparador de Remesas (GET /api/remesas)
-    const remesasRes = await client.get('/api/remesas?amount=100');
-    assertTest('GET /api/remesas -> Comparador de remesas en tiempo real', remesasRes.status === 200 && remesasRes.data.data.opciones.length >= 4 && !!remesasRes.data.data.mejor_opcion);
+    const remesasRes = await client.get('/api/remesas?amount=100&country=ESPANA');
+    const firstOption = remesasRes.data?.data?.opciones?.[0];
+    const hasBuyAndSellRates = firstOption && Number(firstOption.buy_rate) > 0 && Number(firstOption.sell_rate) > 0;
+    const hasMarketSeparation = remesasRes.data?.data?.opciones_oficiales?.length >= 3 && remesasRes.data?.data?.opciones_paralelas?.length >= 4;
+    assertTest('GET /api/remesas -> Comparador de remesas con separación Oficial (BCV) vs Paralelo (USDT)', remesasRes.status === 200 && remesasRes.data.data.opciones.length >= 7 && hasBuyAndSellRates && hasMarketSeparation);
+
+    // 13b. Listar Proveedores de Remesas (GET /api/remesas/providers)
+    const providersRes = await client.get('/api/remesas/providers', {
+      headers: { 'x-admin-key': 'venfi-admin-2026' }
+    });
+    const firstProv = providersRes.data?.data?.[0];
+    const hasMultipliersAndMarket = firstProv && firstProv.buy_rate_multiplier !== undefined && firstProv.sell_rate_multiplier !== undefined && firstProv.market_type !== undefined;
+    assertTest('GET /api/remesas/providers -> Listado de casas de cambio con buy/sell multipliers y market_type', providersRes.status === 200 && providersRes.data.data.length >= 7 && hasMultipliersAndMarket);
+
+    // 13c. Verificar las 3 nuevas empresas añadidas y su clasificación oficial
+    const italcambio = providersRes.data?.data?.find((p: any) => p.key === 'italcambio');
+    const anguloLopez = providersRes.data?.data?.find((p: any) => p.key === 'angulo_lopez');
+    const insular = providersRes.data?.data?.find((p: any) => p.key === 'insular');
+    const allOfficial = italcambio?.market_type === 'official' && anguloLopez?.market_type === 'official' && insular?.market_type === 'official';
+    assertTest('Verificar 3 casas de cambio oficiales (ItalCambio, Angulo López, Insular -> market_type: official)', !!italcambio && !!anguloLopez && !!insular && allOfficial);
 
     // 14. Flujo Completo de Pagos Zelle (POST /api/payments/create [zelle])
     const zelleOrderRes = await client.post('/api/payments/create', {
