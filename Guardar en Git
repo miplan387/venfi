@@ -1,5 +1,5 @@
 cd /home/xrafa387/Escritorio/Proyecto\ Venfi
-git add .
+git add
 git commit -m "Ficha de Oro + Ficha de Petróleo + Menú de pestañas"
 git push
 
