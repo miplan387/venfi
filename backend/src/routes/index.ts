@@ -9,6 +9,8 @@ import remesasRoutes from './remesasRoutes';
 import adminRoutes from './adminRoutes';
 import visitsRoutes from './visitsRoutes';
 import paymentMethodsRoutes from './paymentMethodsRoutes';
+import marketRoutes from './marketRoutes';
+import goldRoutes from './goldRoutes';
 
 const router = Router();
 
@@ -23,6 +25,9 @@ router.use('/admin', adminRoutes);
 router.use('/visits', visitsRoutes);
 router.use('/payment-methods', paymentMethodsRoutes);
 router.use('/payments/methods', paymentMethodsRoutes);
+router.use('/market', marketRoutes);
+router.use('/market', goldRoutes);
+router.use('/gold', goldRoutes);
 
 
 

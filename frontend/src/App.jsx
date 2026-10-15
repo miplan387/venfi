@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
+import { NavTabs } from './components/NavTabs';
 import { HeroRates } from './components/HeroRates';
 import { CurrencyConverter } from './components/CurrencyConverter';
 import { RemittanceComparator } from './components/RemittanceComparator';
 import { TopRanking } from './components/TopRanking';
+import { OilPriceCard } from './components/OilPriceCard';
+import GoldPriceCard from './components/GoldPriceCard';
 import { NewsFeed } from './components/NewsFeed';
 import { FloatingCta } from './components/FloatingCta';
 import { EscaparateOro } from './components/EscaparateOro';
@@ -199,6 +202,9 @@ export function AppContent() {
 
       {currentView === 'portal' && (
         <main style={{ flex: 1 }}>
+          {/* Menú de Pestañas Sticky de Navegación */}
+          <NavTabs />
+
           {/* Sección 1: Tasas BCV, Paralelo, USDT, Euro */}
           <HeroRates 
             rates={rates} 
@@ -222,6 +228,12 @@ export function AppContent() {
             onOpenAdvertise={handleOpenAdvertise}
             onTrackClick={handleTrackClick}
           />
+
+          {/* Sección 4: Ficha de Petróleo (Brent + Merey 16 con EIA) */}
+          <OilPriceCard />
+
+          {/* Sección 5: Ficha de Oro (XAU/USD con Omkar Cloud) */}
+          <GoldPriceCard />
 
           {/* Sección Extra: Noticias Financieras */}
           <NewsFeed />

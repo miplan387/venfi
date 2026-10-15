@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.config = void 0;
+exports.env = exports.config = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 exports.config = {
@@ -33,6 +33,15 @@ exports.config = {
         paralelo: process.env.PARALELO_API_URL || 'https://ve.dolarapi.com/v1/dolares/paralelo',
         usdt: process.env.USDT_API_URL || 'https://ve.dolarapi.com/v1/dolares/usdt',
         openWeatherApiKey: process.env.OPENWEATHER_API_KEY || ''
+    },
+    market: {
+        eiaApiKey: process.env.EIA_API_KEY || '',
+        mereyDiscount: parseFloat(process.env.MEREY_DISCOUNT || '14.00'),
+        goldApiKey: process.env.GOLD_API_KEY || ''
     }
+};
+exports.env = {
+    ...exports.config,
+    GOLD_API_KEY: process.env.GOLD_API_KEY || '',
 };
 //# sourceMappingURL=env.js.map

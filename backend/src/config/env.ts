@@ -28,7 +28,18 @@ export const config = {
     paralelo: process.env.PARALELO_API_URL || 'https://ve.dolarapi.com/v1/dolares/paralelo',
     usdt: process.env.USDT_API_URL || 'https://ve.dolarapi.com/v1/dolares/usdt',
     openWeatherApiKey: process.env.OPENWEATHER_API_KEY || ''
+  },
+  market: {
+    eiaApiKey: process.env.EIA_API_KEY || '',
+    mereyDiscount: parseFloat(process.env.MEREY_DISCOUNT || '14.00'),
+    goldApiKey: process.env.GOLD_API_KEY || ''
   }
 };
+
+export const env = {
+  ...config,
+  GOLD_API_KEY: process.env.GOLD_API_KEY || '',
+};
+
 
 

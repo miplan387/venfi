@@ -75,8 +75,8 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
   };
 
   return (
-    <section id="ranking-section" style={{ padding: '3.5rem 0 4.5rem 0', position: 'relative' }}>
-      <span id="ranking" style={{ position: 'absolute', top: '-20px' }}></span>
+    <section id="ranking" style={{ padding: '3.5rem 0 4.5rem 0', position: 'relative' }}>
+      <span id="ranking-section" style={{ position: 'absolute', top: '-20px' }}></span>
       <div className="container">
         {/* HEADER DEL RANKING */}
         <div style={{

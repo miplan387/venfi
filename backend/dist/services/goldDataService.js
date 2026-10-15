@@ -1,0 +1,135 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getGoldMarketData = exports.fetchGoldPrice = exports.GRAMS_PER_KILOGRAM = exports.GRAMS_PER_TROY_OUNCE = void 0;
+const axios_1 = __importDefault(require("axios"));
+const env_1 = require("../config/env");
+// Constantes oficiales de conversión métrica
+exports.GRAMS_PER_TROY_OUNCE = 31.1035; // 1 onza troy = 31.1035 gramos
+exports.GRAMS_PER_KILOGRAM = 1000; // 1 kilogramo = 1000 gramos
+// Cache en memoria (6 horas)
+let cache = null;
+const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 horas
+/**
+ * Obtiene el precio del oro (XAU/USD) desde la API de Omkar Cloud
+ * Endpoint: https://gold-price-api.omkar.cloud/price
+ */
+const fetchGoldPrice = async () => {
+    const apiKey = env_1.env.GOLD_API_KEY;
+    // Si no hay API key o es el placeholder por defecto, usar fallback directo
+    if (!apiKey || apiKey === 'tu_clave_aqui' || apiKey.startsWith('tu_')) {
+        return {
+            price: 2650.00,
+            updated_at: new Date().toISOString(),
+            currency: 'USD',
+            unit: 'onza troy',
+            fallback: true,
+        };
+    }
+    try {
+        const response = await axios_1.default.get('https://gold-price-api.omkar.cloud/price', {
+            headers: { 'API-Key': apiKey },
+            timeout: 10000,
+        });
+        const { price_usd, updated_at } = response.data;
+        return {
+            price: typeof price_usd === 'number' ? price_usd : parseFloat(price_usd || '2650.00'),
+            updated_at: updated_at || new Date().toISOString(),
+            currency: 'USD',
+            unit: 'onza troy',
+            fallback: false,
+        };
+    }
+    catch (error) {
+        console.error('Error fetching gold price from Omkar Cloud:', error);
+        // Fallback: valor estático calibrado
+        return {
+            price: 2650.00,
+            updated_at: new Date().toISOString(),
+            currency: 'USD',
+            unit: 'onza troy',
+            fallback: true,
+        };
+    }
+};
+exports.fetchGoldPrice = fetchGoldPrice;
+/**
+ * Obtiene los datos consolidados del oro en 3 unidades:
+ * 1. Onza troy (estándar internacional)
+ * 2. Gramo (joyería y comercio local)
+ * 3. Kilogramo (lingotes y transacciones de mayor volumen)
+ */
+const getGoldMarketData = async (forceRefresh = false) => {
+    // Verificar caché si no se solicita refresco forzado
+    if (!forceRefresh && cache && Date.now() - cache.timestamp < CACHE_TTL) {
+        return cache.data;
+    }
+    const goldData = await (0, exports.fetchGoldPrice)();
+    const rawPrice = goldData.price || 2650.00;
+    // Cálculos de conversión oficiales
+    const troyOuncePrice = Number(rawPrice.toFixed(2));
+    const gramPrice = Number((rawPrice / exports.GRAMS_PER_TROY_OUNCE).toFixed(2));
+    const kilogramPrice = Number(((rawPrice / exports.GRAMS_PER_TROY_OUNCE) * exports.GRAMS_PER_KILOGRAM).toFixed(2));
+    const troyOunceUnit = {
+        name: 'Onza Troy',
+        code: 'XAU/USD',
+        symbol: 'oz t',
+        icon: '🪙',
+        price: troyOuncePrice,
+        currency: 'USD',
+        unit: 'onza troy',
+        description: 'Estándar internacional de los mercados financieros (CME / LBMA)'
+    };
+    const gramUnit = {
+        name: 'Gramo',
+        code: 'XAU/G',
+        symbol: 'g',
+        icon: '💍',
+        price: gramPrice,
+        currency: 'USD',
+        unit: 'gramo',
+        description: 'Común en joyería, orfebrería y comercio local'
+    };
+    const kilogramUnit = {
+        name: 'Kilogramo',
+        code: 'XAU/KG',
+        symbol: 'kg',
+        icon: '🧱',
+        price: kilogramPrice,
+        currency: 'USD',
+        unit: 'kilogramo',
+        description: 'Lingotes de inversión y transacciones mayoristas'
+    };
+    const data = {
+        gold: {
+            price: troyOuncePrice, // Compatibilidad con clientes anteriores
+            currency: goldData.currency,
+            unit: goldData.unit,
+            updated_at: goldData.updated_at,
+            troy_ounce: troyOunceUnit,
+            gram: gramUnit,
+            kilogram: kilogramUnit,
+            units: {
+                troy_ounce: troyOunceUnit,
+                gram: gramUnit,
+                kilogram: kilogramUnit
+            }
+        },
+        conversion_factors: {
+            grams_per_troy_ounce: exports.GRAMS_PER_TROY_OUNCE,
+            grams_per_kilogram: exports.GRAMS_PER_KILOGRAM,
+            formula: '1 onza troy = 31.1035 g | 1 kg = 1,000 g'
+        },
+        last_updated: new Date().toISOString(),
+        data_source: 'Omkar Cloud (CME Gold Futures)',
+        data_delay_warning: 'Precio referencial del oro (XAU/USD). Datos con posible retraso de minutos.',
+        is_fallback: goldData.fallback || false,
+    };
+    // Actualizar caché
+    cache = { data, timestamp: Date.now() };
+    return data;
+};
+exports.getGoldMarketData = getGoldMarketData;
+//# sourceMappingURL=goldDataService.js.map
