@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { env } from '../config/env';
+import { marketDataService } from './marketDataService';
 
 // Constantes oficiales de conversión métrica
 export const GRAMS_PER_TROY_OUNCE = 31.1035; // 1 onza troy = 31.1035 gramos
@@ -133,6 +134,9 @@ export const getGoldMarketData = async (forceRefresh: boolean = false) => {
     data_delay_warning: 'Precio referencial del oro (XAU/USD). Datos con posible retraso de minutos.',
     is_fallback: goldData.fallback || false,
   };
+
+  // Registrar precio del oro diario en commodity_history en segundo plano (1 por día)
+  marketDataService.recordCommodityPrice('gold', troyOuncePrice).catch(() => {});
 
   // Actualizar caché
   cache = { data, timestamp: Date.now() };

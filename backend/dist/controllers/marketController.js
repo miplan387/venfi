@@ -25,6 +25,29 @@ class MarketController {
             });
         }
     }
+    /**
+     * GET /api/market/history/:type
+     * Parámetros opcionales: ?days=7 o ?days=30
+     * Retorna el historial diario y tendencia de cotizaciones para oro y petróleo
+     */
+    async getCommodityHistory(req, res) {
+        try {
+            const type = String(req.params.type);
+            const days = parseInt(req.query.days, 10) || 7;
+            const data = await marketDataService_1.marketDataService.getCommodityHistory(type, days);
+            res.status(200).json({
+                success: true,
+                data
+            });
+        }
+        catch (error) {
+            console.error('[MarketController] Error al obtener historial de commodity:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Error al obtener historial'
+            });
+        }
+    }
 }
 exports.MarketController = MarketController;
 exports.marketController = new MarketController();

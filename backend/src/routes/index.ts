@@ -36,7 +36,7 @@ router.use('/gold', goldRoutes);
 router.get('/health', (req, res) => {
   res.status(200).json({
     status: 'online',
-    app: 'Venfi Backend API',
+    app: 'Venfidata Backend API',
     version: '1.0.0',
     timestamp: new Date().toISOString()
   });

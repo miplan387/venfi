@@ -35,7 +35,7 @@ export const Terms = ({ onBackToPortal }) => {
             Términos y Condiciones de Servicio
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, lineHeight: 1.6 }}>
-            Última actualización: <strong>Octubre 2026</strong>. Por favor, lea detenidamente estos términos antes de utilizar la plataforma <strong>Venfi</strong> (Venezuela + Finanzas). Al acceder o pautar en el sitio, usted acepta quedar legalmente vinculado por las siguientes cláusulas.
+            Última actualización: <strong>Octubre 2026</strong>. Por favor, lea detenidamente estos términos antes de utilizar la plataforma <strong>Venfidata</strong>. Al acceder o pautar en el sitio, usted acepta quedar legalmente vinculado por las siguientes cláusulas.
           </p>
           <div style={{
             background: 'rgba(251, 191, 36, 0.08)',
@@ -50,7 +50,7 @@ export const Terms = ({ onBackToPortal }) => {
             color: '#f8fafc',
             lineHeight: 1.6
           }}>
-            ⚠️ AVISO LEGAL: Las tasas mostradas en Venfi corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfi es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
+            ⚠️ AVISO LEGAL: Las tasas mostradas en Venfidata corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfidata es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
           </div>
         </div>
 
@@ -62,7 +62,7 @@ export const Terms = ({ onBackToPortal }) => {
               <span style={{ color: 'var(--color-gold)' }}>1.</span> Naturaleza del Servicio y Actividad Publicitaria
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, margin: 0 }}>
-              <strong>Venfi</strong> opera exclusivamente como una plataforma tecnológica de información financiera referencial y espacios publicitarios digitales bajo el clasificador comercial internacional y <strong>Código de Actividad SENIAT 8299</strong> (Otros Servicios Empresariales y Publicitarios N.C.P.).
+              <strong>Venfidata</strong> opera exclusivamente como una plataforma tecnológica de información financiera referencial y espacios publicitarios digitales bajo el clasificador comercial internacional y <strong>Código de Actividad SENIAT 8299</strong> (Otros Servicios Empresariales y Publicitarios N.C.P.).
             </p>
             <div style={{
               background: 'rgba(251, 191, 36, 0.08)',
@@ -73,7 +73,7 @@ export const Terms = ({ onBackToPortal }) => {
               fontSize: '0.85rem',
               color: '#ffffff'
             }}>
-              <strong>Declaración Expresa de No Ludopatía:</strong> Venfi NO constituye, ofrece, opera ni promueve juegos de azar, loterías, quinielas, apuestas ni esquemas piramidales o de captación no autorizada de fondos.
+              <strong>Declaración Expresa de No Ludopatía:</strong> Venfidata NO constituye, ofrece, opera ni promueve juegos de azar, loterías, quinielas, apuestas ni esquemas piramidales o de captación no autorizada de fondos.
             </div>
           </div>
 
@@ -86,7 +86,7 @@ export const Terms = ({ onBackToPortal }) => {
               Todas las cotizaciones de divisas (Dólar BCV Oficial, Euro BCV Oficial, Binance P2P USDT) y cotizaciones de remesas mostradas en este portal corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo.
             </p>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, marginTop: '0.75rem', margin: 0 }}>
-              Venfi no es una entidad bancaria, casa de cambio regulada por SUDEBAN, ni un intermediario financiero. El contenido no debe interpretarse bajo ninguna circunstancia como una recomendación de inversión, asesoría contable o directriz fiscal.
+              Venfidata no es una entidad bancaria, casa de cambio regulada por SUDEBAN, ni un intermediario financiero. El contenido no debe interpretarse bajo ninguna circunstancia como una recomendación de inversión, asesoría contable o directriz fiscal.
             </p>
           </div>
 
@@ -96,7 +96,7 @@ export const Terms = ({ onBackToPortal }) => {
               <span style={{ color: 'var(--color-gold)' }}>3.</span> Propiedad Intelectual y Derechos de Autor
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, margin: 0 }}>
-              Todo el software, código fuente, algoritmos de cálculo, diseño gráfico, logotipos, paleta cromática, esquemas de bases de datos y marcas denominativas referentes a <strong>Venfi</strong> son propiedad intelectual exclusiva de Venfi Media LLC. Queda estrictamente prohibida la reproducción, distribución o ingeniería inversa total o parcial sin autorización previa por escrito.
+              Todo el software, código fuente, algoritmos de cálculo, diseño gráfico, logotipos, paleta cromática, esquemas de bases de datos y marcas denominativas referentes a <strong>Venfidata</strong> son propiedad intelectual exclusiva de Venfidata Media LLC. Queda estrictamente prohibida la reproducción, distribución o ingeniería inversa total o parcial sin autorización previa por escrito.
             </p>
           </div>
 
@@ -106,7 +106,7 @@ export const Terms = ({ onBackToPortal }) => {
               <span style={{ color: 'var(--color-gold)' }}>4.</span> Responsabilidad Limitada y Enlaces a Terceros
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, margin: 0 }}>
-              La plataforma incluye enlaces de hipertexto y espacios comerciales contratados por anunciantes del Ranking Top 10. Venfi no ejerce control sobre la veracidad, entrega de productos ni cumplimiento de acuerdos pactados en sitios web externos de terceros, y no asumirá responsabilidad civil, penal ni administrativa por disputas comerciales entre usuarios y anunciantes.
+              La plataforma incluye enlaces de hipertexto y espacios comerciales contratados por anunciantes del Ranking Top 10. Venfidata no ejerce control sobre la veracidad, entrega de productos ni cumplimiento de acuerdos pactados en sitios web externos de terceros, y no asumirá responsabilidad civil, penal ni administrativa por disputas comerciales entre usuarios y anunciantes.
             </p>
           </div>
 

@@ -276,7 +276,7 @@ export class DashboardService {
       return [
         {
           id: 'notif_1',
-          message: '¡Felicidades! Tu anuncio está activo en el Puesto #1 del Ranking de Venfi.',
+          message: '¡Felicidades! Tu anuncio está activo en el Puesto #1 del Ranking de Venfidata.',
           type: 'ranking',
           created_at: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
           is_read: false

@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   Calendar
 } from 'lucide-react';
+import { MiniTrendChart } from './MiniTrendChart';
 
 export const OilPriceCard = () => {
   const [marketData, setMarketData] = useState(null);
@@ -400,8 +401,18 @@ export const OilPriceCard = () => {
               </span>
             </div>
 
+            {/* Mini-Gráfico de Tendencia Sparkline (7D / 30D) con Indicador Visual */}
+            <MiniTrendChart 
+              commodityType="oil_brent"
+              accentColor="#38bdf8"
+              unit="USD/barril"
+              defaultDays={7}
+              showControls={true}
+              height={70}
+            />
+
             {/* Datos Técnicos y Fuente */}
-            <div style={{ marginTop: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.82rem' }}>
+            <div style={{ marginTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.82rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                 <span>Cotización Previa:</span>
                 <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
@@ -487,8 +498,18 @@ export const OilPriceCard = () => {
               </span>
             </div>
 
+            {/* Mini-Gráfico de Tendencia Sparkline (7D / 30D) con Indicador Visual */}
+            <MiniTrendChart 
+              commodityType="oil_merey"
+              accentColor="#fbbf24"
+              unit="USD/barril"
+              defaultDays={7}
+              showControls={true}
+              height={70}
+            />
+
             {/* Datos Técnicos y Fórmula */}
-            <div style={{ marginTop: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.82rem' }}>
+            <div style={{ marginTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.82rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                 <span>Fórmula de Estimación:</span>
                 <span style={{

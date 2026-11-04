@@ -4,6 +4,7 @@
 *.env
 !.env.example
 !*.env.example
+!.env.*.example
 
 # Dependencies
 node_modules/
@@ -43,3 +44,13 @@ Thumbs.db
 # Testing & Coverage
 coverage/
 *.lcov
+
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+
+# Producción
+.env.production
+.env.production.local
+

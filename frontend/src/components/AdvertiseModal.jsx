@@ -888,7 +888,7 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.15rem 0 0 0' }}>
                       {formData.paymentMethod === 'zinli' 
                         ? 'Transfiere directamente a nuestra cuenta oficial Zinli en dólares:' 
-                        : 'Transfiere a la cuenta oficial de Venfi vía Zelle:'}
+                        : 'Transfiere a la cuenta oficial de Venfidata vía Zelle:'}
                     </p>
                   </div>
                 </div>
@@ -906,10 +906,10 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
                     </button>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: '0.4rem' }}>
-                    <span>Titular: <strong style={{ color: '#ffffff' }}>{methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfi Publicidad' : 'Venfi Media LLC')}</strong></span>
+                    <span>Titular: <strong style={{ color: '#ffffff' }}>{methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata Publicidad' : 'Venfidata Media LLC')}</strong></span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfi Publicidad' : 'Venfi Media LLC'), 'zinli_name')}
+                      onClick={() => copyToClipboard(methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata Publicidad' : 'Venfidata Media LLC'), 'zinli_name')}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       title="Copiar titular"
                     >
@@ -1418,7 +1418,7 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
               ¡Anuncio Publicado con Éxito!
             </h3>
             <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 1.5rem auto' }}>
-              Tu marca <strong>{formData.businessName}</strong> ya está visible en el Ranking Top 10 de Venfi recibiendo tráfico.
+              Tu marca <strong>{formData.businessName}</strong> ya está visible en el Ranking Top 10 de Venfidata recibiendo tráfico.
             </p>
 
             <div style={{

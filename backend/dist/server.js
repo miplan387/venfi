@@ -11,7 +11,7 @@ const startServer = async () => {
         app.listen(env_1.config.port, () => {
             console.log(`
   ==============================================================
-  🚀 SERVIDOR VENFI BACKEND INICIADO CON ÉXITO
+  🚀 SERVIDOR VENFIDATA BACKEND INICIADO CON ÉXITO
   ==============================================================
   📡 Puerto:           http://localhost:${env_1.config.port}
   📚 Swagger Docs:     http://localhost:${env_1.config.port}/api-docs

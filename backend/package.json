@@ -1,7 +1,7 @@
 {
-  "name": "venfi-backend",
+  "name": "venfidata-backend",
   "version": "1.0.0",
-  "description": "Backend API para Venfi (Venezuela + Finanzas)",
+  "description": "Backend API para Venfidata (Venezuela + Finanzas)",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

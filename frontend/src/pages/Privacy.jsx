@@ -35,7 +35,7 @@ export const Privacy = ({ onBackToPortal }) => {
             Política de Privacidad
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, lineHeight: 1.6 }}>
-            En <strong>Venfi</strong> valoramos y protegemos la privacidad de nuestros usuarios y anunciantes. Esta política detalla qué información recopilamos, con qué finalidad técnica se procesa y las estrictas medidas de seguridad implementadas.
+            En <strong>Venfidata</strong> valoramos y protegemos la privacidad de nuestros usuarios y anunciantes. Esta política detalla qué información recopilamos, con qué finalidad técnica se procesa y las estrictas medidas de seguridad implementadas.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export const Privacy = ({ onBackToPortal }) => {
               <Lock size={20} color="var(--color-primary)" /> 3. No Divulgación a Terceros (Cero Venta de Datos)
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, margin: 0 }}>
-              <strong>Venfi mantiene una política estricta de confidencialidad:</strong> Jamás venderemos, alquilaremos, cederemos ni comercializaremos su información personal con intermediarios de datos, agencias de publicidad masiva ni redes de terceros con fines de spam.
+              <strong>Venfidata mantiene una política estricta de confidencialidad:</strong> Jamás venderemos, alquilaremos, cederemos ni comercializaremos su información personal con intermediarios de datos, agencias de publicidad masiva ni redes de terceros con fines de spam.
             </p>
           </div>
 

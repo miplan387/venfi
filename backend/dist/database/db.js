@@ -20,10 +20,11 @@ class DatabaseManager {
         notifications: [],
         rates_history: [],
         zelle_payments: [],
+        commodity_history: [],
         payment_methods: [
             { id: 1, key: 'binance', name: 'Binance Pay (USDT)', icon: '🟡', description: 'Pago instantáneo con criptomonedas y confirmación automática por Webhook.', fields: { merchantId: '284910482', currency: 'USDT' }, is_active: true, requires_approval: false, sort_order: 1 },
-            { id: 2, key: 'zinli', name: 'Zinli (USD)', icon: '💳', description: 'Pago con Zinli, billetera digital en dólares con acreditación inmediata.', fields: { email: 'miplan3d@gmail.com', name: 'Venfi Publicidad' }, is_active: true, requires_approval: true, sort_order: 2 },
-            { id: 3, key: 'pago_movil', name: 'Pago Móvil (VES)', icon: '📱', description: 'Pago interbancario en Bolívares con QR dinámico a tasa oficial BCV.', fields: { bank: 'BNC (Banco Nacional de Crédito)', bankCode: '0191', phone: '0412-4160819', idNumber: 'V-11112387', beneficiary: 'Venfi Publicidad & Medios C.A.' }, is_active: true, requires_approval: true, sort_order: 3 }
+            { id: 2, key: 'zinli', name: 'Zinli (USD)', icon: '💳', description: 'Pago con Zinli, billetera digital en dólares con acreditación inmediata.', fields: { email: 'miplan3d@gmail.com', name: 'Venfidata Publicidad' }, is_active: true, requires_approval: true, sort_order: 2 },
+            { id: 3, key: 'pago_movil', name: 'Pago Móvil (VES)', icon: '📱', description: 'Pago interbancario en Bolívares con QR dinámico a tasa oficial BCV.', fields: { bank: 'BNC (Banco Nacional de Crédito)', bankCode: '0191', phone: '0412-4160819', idNumber: 'V-11112387', beneficiary: 'Venfidata Publicidad & Medios C.A.' }, is_active: true, requires_approval: true, sort_order: 3 }
         ],
         remittance_providers: [
             {

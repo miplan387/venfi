@@ -31,3 +31,29 @@ ON CONFLICT (position) DO UPDATE SET
     avatar = EXCLUDED.avatar,
     tier = EXCLUDED.tier,
     amount_paid = EXCLUDED.amount_paid;
+
+-- Seed inicial de historial de Commodities (Oro y Petróleo últimos 30 días)
+DO $$
+DECLARE
+  d DATE;
+  i INT := 30;
+  base_gold NUMERIC := 2620.00;
+  base_brent NUMERIC := 72.50;
+  var_gold NUMERIC;
+  var_brent NUMERIC;
+BEGIN
+  FOR d IN SELECT generate_series(CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE, '1 day'::interval)::date LOOP
+    var_gold := ROUND((base_gold + (30 - i) * 1.1 + (sin(i::numeric) * 8.5))::numeric, 2);
+    var_brent := ROUND((base_brent + (30 - i) * 0.06 + (cos(i::numeric) * 1.2))::numeric, 2);
+
+    INSERT INTO commodity_history (commodity_type, price_usd, recorded_at)
+    VALUES 
+      ('gold', var_gold, d),
+      ('oil_brent', var_brent, d),
+      ('oil_merey', ROUND((var_brent - 14.00)::numeric, 2), d)
+    ON CONFLICT (commodity_type, recorded_at) DO NOTHING;
+
+    i := i - 1;
+  END LOOP;
+END $$;
+

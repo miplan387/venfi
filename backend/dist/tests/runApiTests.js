@@ -9,7 +9,7 @@ const db_1 = require("../database/db");
 const http_1 = __importDefault(require("http"));
 const runTests = async () => {
     console.log('🧪 ==============================================================');
-    console.log('🧪 INICIANDO SUITE DE PRUEBAS DE INTEGRACIÓN: VENFI BACKEND API');
+    console.log('🧪 INICIANDO SUITE DE PRUEBAS DE INTEGRACIÓN: VENFIDATA BACKEND API');
     console.log('🧪 ==============================================================\n');
     // Inicializar BD y Servidor de pruebas en puerto dinámico o 5001
     await db_1.db.init();

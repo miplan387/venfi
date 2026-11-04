@@ -60,7 +60,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
           </span>
         </div>
         <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.5rem' }}>
-          Términos y Condiciones de Uso — Venfi
+          Términos y Condiciones de Uso — Venfidata
         </h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
           Actividad Económica: Código SENIAT 8299 (Servicios empresariales y de publicidad).
@@ -79,7 +79,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
           color: '#f8fafc',
           lineHeight: 1.55
         }}>
-          ⚠️ AVISO LEGAL: Las tasas mostradas en Venfi corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfi es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
+          ⚠️ AVISO LEGAL: Las tasas mostradas en Venfidata corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfidata es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
         </div>
 
         <div style={{
@@ -95,10 +95,10 @@ export const TermsModal = ({ isOpen, onClose }) => {
               1. Naturaleza Jurídica y Objeto del Servicio
             </h4>
             <p>
-              Venfi es un portal web de consulta informativa referencial y de comercialización directa de espacios publicitarios digitales en Venezuela.
+              Venfidata es un portal web de consulta informativa referencial y de comercialización directa de espacios publicitarios digitales en Venezuela.
             </p>
             <p style={{ marginTop: '0.35rem', color: 'var(--color-gold)' }}>
-              <strong>AVISO IMPORTANTE:</strong> Venfi NO es una institución bancaria, casa de cambio, transmisor de fondos, plataforma de apuestas ni juego de azar.
+              <strong>AVISO IMPORTANTE:</strong> Venfidata NO es una institución bancaria, casa de cambio, transmisor de fondos, plataforma de apuestas ni juego de azar.
             </p>
           </div>
 
@@ -107,7 +107,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
               2. Deslinde de Responsabilidad Cambiaria (Disclaimer)
             </h4>
             <p>
-              Las cotizaciones correspondientes al Banco Central de Venezuela (BCV), Euro Oficial y Criptoactivos (Binance USDT) son obtenidas de fuentes públicas abiertas. Venfi no interviene, fija ni garantiza cotizaciones. Cualquier transacción comercial realizada entre usuarios en base a estas referencias es responsabilidad exclusiva de las partes.
+              Las cotizaciones correspondientes al Banco Central de Venezuela (BCV), Euro Oficial y Criptoactivos (Binance USDT) son obtenidas de fuentes públicas abiertas. Venfidata no interviene, fija ni garantiza cotizaciones. Cualquier transacción comercial realizada entre usuarios en base a estas referencias es responsabilidad exclusiva de las partes.
             </p>
           </div>
 

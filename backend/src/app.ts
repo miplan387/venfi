@@ -29,46 +29,13 @@ export const createApp = (): Express => {
     })
   );
 
-  // 2. Control de Acceso CORS Flexible y Seguro para Desarrollo y Producción
-  const allowedOrigins = [
-    config.frontendUrl,
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5174',
-    'http://localhost:3000',
-    'https://venfi.app',
-    'https://www.venfi.app'
-  ];
-
-  app.use(
-    cors({
-      origin: (origin, callback) => {
-        if (
-          !origin ||
-          config.nodeEnv !== 'production' ||
-          allowedOrigins.includes(origin) ||
-          /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-        ) {
-          callback(null, true);
-        } else {
-          callback(new Error('No permitido por la política CORS de Venfi'));
-        }
-      },
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'BinancePay-Timestamp',
-        'BinancePay-Nonce',
-        'BinancePay-Certificate-SN',
-        'BinancePay-Signature',
-        'x-visitor-id',
-        'x-admin-key'
-      ]
-    })
-  );
+  // 2. Control de Acceso CORS Flexible para Web, Flutter y Producción
+  app.use(cors({
+    origin: '*', // Permite web, Flutter y otros clientes
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key', 'x-visitor-id', 'BinancePay-Timestamp', 'BinancePay-Nonce', 'BinancePay-Certificate-SN', 'BinancePay-Signature']
+  }));
 
   // 3. Parser de Body con límites seguros
   app.use(express.json({ limit: '10mb' }));
@@ -86,7 +53,7 @@ export const createApp = (): Express => {
   // 7. Ruta raíz de bienvenida y estado
   app.get('/', (req: Request, res: Response) => {
     res.json({
-      name: 'Venfi API (Venezuela + Finanzas)',
+      name: 'Venfidata API (Venezuela + Finanzas)',
       description: 'Plataforma líder de herramientas financieras y ranking publicitario',
       version: '1.0.0',
       status: 'operational',
@@ -106,7 +73,7 @@ export const createApp = (): Express => {
 
   // 9. Manejador global de errores (500)
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error('[Venfi API Error]:', err.message || err);
+    console.error('[Venfidata API Error]:', err.message || err);
     res.status(err.status || 500).json({
       success: false,
       message: err.message || 'Error interno del servidor'

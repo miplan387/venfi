@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 const NavTabs = () => {
   // Array de pestañas - fácil de extender en el futuro (ej. petróleo, oro)
   const tabs = [
+    { id: 'ranking', label: 'Ranking', icon: '🏆' },
     { id: 'tasas', label: 'Tasas', icon: '📈' },
     { id: 'convertidor', label: 'Convertidor', icon: '🧮' },
     { id: 'remesas', label: 'Remesas', icon: '💸' },
-    { id: 'ranking', label: 'Ranking', icon: '🏆' },
     { id: 'petroleo', label: 'Petróleo', icon: '🛢️' },
     { id: 'oro', label: 'Oro', icon: '🥇' },
     { id: 'noticias', label: 'Noticias', icon: '📰' },

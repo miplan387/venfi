@@ -114,7 +114,7 @@ export class PaymentService {
         merchantTradeNo: orderId,
         orderAmount: finalAmount,
         currency: 'USDT',
-        goodsName: `Venfi Publicidad Ranking #${data.position}`,
+        goodsName: `Venfidata Publicidad Ranking #${data.position}`,
         goodsDetail: data.slogan,
         userId
       });
@@ -140,7 +140,7 @@ export class PaymentService {
         paymentMethod: 'zinli',
         zinliInfo: {
           recipientEmail: 'miplan3d@gmail.com',
-          accountHolder: 'Venfi Publicidad',
+          accountHolder: 'Venfidata Publicidad',
           referenceNote: orderId,
           amount: finalAmount,
           instructions: 'Envía el monto exacto vía Zinli al correo miplan3d@gmail.com. Luego reporta tu número de referencia.'
@@ -158,7 +158,7 @@ export class PaymentService {
         paymentMethod: 'zelle',
         zelleInfo: {
           recipientEmail: 'pagos@venfi.app',
-          accountHolder: 'Venfi Media LLC',
+          accountHolder: 'Venfidata Media LLC',
           referenceNote: orderId,
           amount: finalAmount,
           instructions: 'Envía el monto exacto vía Zelle colocando tu Order ID en el campo de nota de la transferencia. Luego reporta tu número de referencia.'
@@ -385,7 +385,7 @@ export class PaymentService {
       const user = store.users.find(u => u.id === z.user_id) || {};
       return {
         ...z,
-        business_name: payment.business_name || 'Anunciante Venfi',
+        business_name: payment.business_name || 'Anunciante Venfidata',
         target_url: payment.target_url || 'https://venfi.app',
         slogan: payment.slogan || 'Campaña publicitaria',
         category: payment.category || 'General',
@@ -543,7 +543,7 @@ export class PaymentService {
     // Obtener detalles de la pauta existente
     let businessName = 'Anuncio Renovado';
     let targetUrl = 'https://venfi.app';
-    let slogan = 'Pauta publicitaria extendida en Venfi';
+    let slogan = 'Pauta publicitaria extendida en Venfidata';
     let avatar = '🚀';
     let category = 'General';
 
@@ -577,7 +577,7 @@ export class PaymentService {
     bankCode: '0191',
     phone: '0412-4160819',
     idNumber: 'V-11112387',
-    beneficiaryName: 'Venfi Publicidad & Medios C.A.'
+    beneficiaryName: 'Venfidata Publicidad & Medios C.A.'
   };
 
   public getPagoMovilBankData(): PagoMovilBankData {

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.marketDataService = exports.MarketDataService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
+const db_1 = require("../database/db");
 class MarketDataService {
     cache = null;
     lastFetched = 0;
@@ -139,8 +140,11 @@ class MarketDataService {
             isPositive: mereyDiff >= 0,
             unit: 'USD/barril',
             date: date,
-            source: `Estimación Venfi (Brent - Descuento OPEP $${discount.toFixed(2)})`
+            source: `Estimación Venfidata (Brent - Descuento OPEP $${discount.toFixed(2)})`
         };
+        // Registrar precios diarios en commodity_history en segundo plano (1 por día)
+        this.recordCommodityPrice('oil_brent', brentItem.price, date).catch(() => { });
+        this.recordCommodityPrice('oil_merey', mereyItem.price, date).catch(() => { });
         return {
             brent: brentItem,
             merey: mereyItem,
@@ -158,6 +162,142 @@ class MarketDataService {
      */
     generateFallbackResponse() {
         return this.buildConsolidatedResponse(this.STATIC_FALLBACK.brentPrice, this.STATIC_FALLBACK.brentPrevPrice, this.STATIC_FALLBACK.date, 'fallback');
+    }
+    /**
+     * Guarda o actualiza el precio diario en la tabla commodity_history (límite de 1 por día)
+     */
+    async recordCommodityPrice(commodityType, price, dateStr) {
+        if (!price || isNaN(price) || price <= 0)
+            return;
+        const roundedPrice = Number(price.toFixed(2));
+        const targetDate = dateStr || new Date().toISOString().split('T')[0];
+        try {
+            if (db_1.db.isPostgresActive) {
+                await db_1.db.query(`INSERT INTO commodity_history (commodity_type, price_usd, recorded_at)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (commodity_type, recorded_at)
+           DO UPDATE SET price_usd = EXCLUDED.price_usd, created_at = CURRENT_TIMESTAMP`, [commodityType, roundedPrice, targetDate]);
+            }
+            else {
+                const store = db_1.db.getInMemoryStore();
+                if (!store.commodity_history)
+                    store.commodity_history = [];
+                const existingIdx = store.commodity_history.findIndex((c) => c.commodity_type === commodityType && c.recorded_at === targetDate);
+                if (existingIdx >= 0) {
+                    store.commodity_history[existingIdx].price_usd = roundedPrice;
+                    store.commodity_history[existingIdx].created_at = new Date().toISOString();
+                }
+                else {
+                    store.commodity_history.push({
+                        id: store.commodity_history.length + 1,
+                        commodity_type: commodityType,
+                        price_usd: roundedPrice,
+                        recorded_at: targetDate,
+                        created_at: new Date().toISOString()
+                    });
+                }
+            }
+        }
+        catch (err) {
+            console.warn(`[MarketDataService] Error al registrar historial para ${commodityType}:`, err.message);
+        }
+    }
+    /**
+     * Normaliza el tipo de commodity
+     */
+    normalizeCommodityType(type) {
+        const t = (type || '').toLowerCase().trim();
+        if (['gold', 'oro', 'xau', 'xau_usd'].includes(t))
+            return 'gold';
+        if (['oil_brent', 'brent', 'crude_brent', 'petroleo_brent'].includes(t))
+            return 'oil_brent';
+        if (['oil_merey', 'merey', 'merey16', 'merey_16', 'crudo_merey', 'petroleo_merey'].includes(t))
+            return 'oil_merey';
+        return null;
+    }
+    /**
+     * Obtiene el historial de cotizaciones de los últimos N días
+     */
+    async getCommodityHistory(rawType, daysParam = 7) {
+        const commodityType = this.normalizeCommodityType(rawType);
+        if (!commodityType) {
+            throw new Error(`Tipo de commodity no válido: '${rawType}'. Opciones válidas: 'gold', 'oil_brent', 'oil_merey'.`);
+        }
+        const days = Math.min(Math.max(Number(daysParam) || 7, 2), 90);
+        let rows = [];
+        try {
+            if (db_1.db.isPostgresActive) {
+                const res = await db_1.db.query(`SELECT recorded_at::text as recorded_at, price_usd 
+           FROM commodity_history 
+           WHERE commodity_type = $1 
+           ORDER BY recorded_at DESC 
+           LIMIT $2`, [commodityType, days]);
+                rows = res.rows.map((r) => ({
+                    recorded_at: typeof r.recorded_at === 'string' ? r.recorded_at.split('T')[0] : new Date(r.recorded_at).toISOString().split('T')[0],
+                    price_usd: Number(r.price_usd)
+                }));
+            }
+            else {
+                const store = db_1.db.getInMemoryStore();
+                const records = (store.commodity_history || [])
+                    .filter((c) => c.commodity_type === commodityType)
+                    .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
+                    .slice(0, days);
+                rows = records.map((r) => ({
+                    recorded_at: r.recorded_at,
+                    price_usd: Number(r.price_usd)
+                }));
+            }
+        }
+        catch (err) {
+            console.warn(`[MarketDataService] Error al consultar commodity_history (${commodityType}):`, err.message);
+        }
+        // Si hay menos de 2 registros en la base de datos, generar datos de respaldo realistas para la ventana solicitada
+        if (rows.length < 2) {
+            rows = this.generateFallbackHistory(commodityType, days);
+        }
+        // Invertir para orden cronológico (de más antiguo a más reciente) para graficar
+        const sortedChronological = [...rows].reverse();
+        const oldest = sortedChronological[0].price_usd;
+        const latest = sortedChronological[sortedChronological.length - 1].price_usd;
+        const changeAmount = Number((latest - oldest).toFixed(2));
+        const changePercentage = oldest > 0 ? Number(((changeAmount / oldest) * 100).toFixed(2)) : 0;
+        const direction = changeAmount > 0 ? 'up' : (changeAmount < 0 ? 'down' : 'same');
+        return {
+            commodity_type: commodityType,
+            days,
+            currentPrice: latest,
+            previousPrice: oldest,
+            changeAmount,
+            changePercentage,
+            direction,
+            history: sortedChronological.map(item => ({
+                date: item.recorded_at,
+                price: item.price_usd
+            }))
+        };
+    }
+    /**
+     * Genera datos de respaldo simulados y calibrados si la BD no cuenta con suficientes días
+     */
+    generateFallbackHistory(commodityType, days) {
+        const list = [];
+        const basePrices = {
+            gold: 2650.00,
+            oil_brent: 74.35,
+            oil_merey: 60.35
+        };
+        const base = basePrices[commodityType] || 100;
+        for (let i = 0; i < days; i++) {
+            const d = new Date(Date.now() - (i * 86400000));
+            const dateStr = d.toISOString().split('T')[0];
+            const noise = commodityType === 'gold'
+                ? Math.sin(i * 0.7) * 9.5 - (i * 0.4)
+                : Math.cos(i * 0.8) * 1.2 - (i * 0.05);
+            const price = Number((base + noise).toFixed(2));
+            list.push({ recorded_at: dateStr, price_usd: price });
+        }
+        return list;
     }
 }
 exports.MarketDataService = MarketDataService;

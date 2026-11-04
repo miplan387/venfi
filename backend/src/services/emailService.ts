@@ -39,7 +39,7 @@ export class EmailService {
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #070b14; color: #ffffff; padding: 2rem; border-radius: 16px; border: 1px solid rgba(0, 245, 155, 0.3);">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 900; letter-spacing: -0.5px;">
-            <span style="color: #00f59b;">VEN</span>FI
+            <span style="color: #00f59b;">VENFI</span>DATA
           </h1>
           <p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Venezuela • Finanzas & Publicidad</p>
         </div>
@@ -47,7 +47,7 @@ export class EmailService {
         <div style="background: rgba(15, 23, 42, 0.85); padding: 1.75rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
           <h2 style="color: #ffffff; font-size: 18px; margin-top: 0;">Restablecimiento de Contraseña</h2>
           <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-            Hola <strong>${username}</strong>, recibimos una solicitud para restablecer la contraseña de tu cuenta en Venfi.
+            Hola <strong>${username}</strong>, recibimos una solicitud para restablecer la contraseña de tu cuenta en Venfidata.
           </p>
           <p style="color: #94a3b8; font-size: 13px; line-height: 1.5;">
             Haz clic en el siguiente botón para elegir una nueva contraseña. Este enlace expirará en <strong>1 hora</strong>:
@@ -67,7 +67,7 @@ export class EmailService {
 
         <div style="text-align: center; margin-top: 1.5rem; font-size: 12px; color: #64748b;">
           <p>Si no solicitaste este cambio, puedes ignorar este mensaje de forma segura.</p>
-          <p>© 2026 Venfi Venezuela. Todos los derechos reservados.</p>
+          <p>© 2026 Venfidata Venezuela. Todos los derechos reservados.</p>
         </div>
       </div>
     `;
@@ -81,9 +81,9 @@ export class EmailService {
     if (this.transporter) {
       try {
         await this.transporter.sendMail({
-          from: `"Venfi Soporte" <${process.env.SMTP_FROM || 'no-reply@venfi.app'}>`,
+          from: `"Venfidata Soporte" <${process.env.SMTP_FROM || 'no-reply@venfi.app'}>`,
           to: toEmail,
-          subject: '🔑 Restablecer Contraseña - Venfi',
+          subject: '🔑 Restablecer Contraseña - Venfidata',
           html: htmlContent
         });
         return { success: true, resetUrl, delivered: true };

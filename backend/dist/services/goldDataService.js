@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGoldMarketData = exports.fetchGoldPrice = exports.GRAMS_PER_KILOGRAM = exports.GRAMS_PER_TROY_OUNCE = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
+const marketDataService_1 = require("./marketDataService");
 // Constantes oficiales de conversión métrica
 exports.GRAMS_PER_TROY_OUNCE = 31.1035; // 1 onza troy = 31.1035 gramos
 exports.GRAMS_PER_KILOGRAM = 1000; // 1 kilogramo = 1000 gramos
@@ -127,6 +128,8 @@ const getGoldMarketData = async (forceRefresh = false) => {
         data_delay_warning: 'Precio referencial del oro (XAU/USD). Datos con posible retraso de minutos.',
         is_fallback: goldData.fallback || false,
     };
+    // Registrar precio del oro diario en commodity_history en segundo plano (1 por día)
+    marketDataService_1.marketDataService.recordCommodityPrice('gold', troyOuncePrice).catch(() => { });
     // Actualizar caché
     cache = { data, timestamp: Date.now() };
     return data;

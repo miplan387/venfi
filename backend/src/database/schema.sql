@@ -185,4 +185,16 @@ CREATE TABLE IF NOT EXISTS remittance_providers (
 
 CREATE INDEX IF NOT EXISTS idx_remittance_providers_active_sort ON remittance_providers(is_active, sort_order ASC);
 
+-- 10. TABLA: commodity_history (Historial diario de precios de Oro y Petróleo)
+CREATE TABLE IF NOT EXISTS commodity_history (
+  id SERIAL PRIMARY KEY,
+  commodity_type VARCHAR(20) NOT NULL CHECK (commodity_type IN ('gold', 'oil_brent', 'oil_merey')),
+  price_usd DECIMAL(12, 2) NOT NULL,
+  recorded_at DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(commodity_type, recorded_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_commodity_history_type_date ON commodity_history(commodity_type, recorded_at DESC);
+
 

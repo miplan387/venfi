@@ -8,10 +8,10 @@ const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swaggerDocument = {
     openapi: '3.0.0',
     info: {
-        title: 'Venfi API (Venezuela + Finanzas)',
+        title: 'Venfidata API (Venezuela + Finanzas)',
         version: '1.0.0',
         description: `
-Documentación OpenAPI para el backend de Venfi.
+Documentación OpenAPI para el backend de Venfidata.
 Combina herramientas financieras diarias para Venezuela (tasas BCV, paralelo, USDT) con un sistema de ranking publicitario de pago.
 
 ### Autenticación
@@ -19,7 +19,7 @@ Para endpoints protegidos, envía el token JWT en el encabezado:
 \`Authorization: Bearer <token>\`
     `,
         contact: {
-            name: 'Equipo de Soporte Venfi',
+            name: 'Equipo de Soporte Venfidata',
             email: 'soporte@venfi.app',
             url: 'https://venfi.app'
         }
@@ -380,7 +380,7 @@ Para endpoints protegidos, envía el token JWT en el encabezado:
 };
 const setupSwagger = (app) => {
     app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocument, {
-        customSiteTitle: 'Venfi API Docs',
+        customSiteTitle: 'Venfidata API Docs',
         customCss: '.swagger-ui .topbar { display: none } body { background-color: #0b1120; } .swagger-ui { color: #f8fafc; }'
     }));
 };

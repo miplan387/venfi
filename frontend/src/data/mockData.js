@@ -321,7 +321,8 @@ export const initialNews = [
     source: 'Banca y Negocios',
     time: 'Hace 45 min',
     category: 'Banca & Finanzas',
-    url: '#'
+    url: 'https://www.bancaynegocios.com/',
+    sourceUrl: 'https://www.bancaynegocios.com/'
   },
   {
     id: 2,
@@ -329,7 +330,8 @@ export const initialNews = [
     source: 'Bloomberg Línea',
     time: 'Hace 2 horas',
     category: 'Comercio',
-    url: '#'
+    url: 'https://www.bloomberglinea.com/latinoamerica/venezuela/',
+    sourceUrl: 'https://www.bloomberglinea.com/'
   },
   {
     id: 3,
@@ -337,7 +339,8 @@ export const initialNews = [
     source: 'Finanzas Digital',
     time: 'Hace 4 horas',
     category: 'Regulación',
-    url: '#'
+    url: 'https://finanzasdigital.com/',
+    sourceUrl: 'https://finanzasdigital.com/'
   },
   {
     id: 4,
@@ -345,7 +348,8 @@ export const initialNews = [
     source: 'Ecoanalítica',
     time: 'Hace 6 horas',
     category: 'Economía',
-    url: '#'
+    url: 'https://www.ecoanalitica.net/',
+    sourceUrl: 'https://www.ecoanalitica.net/'
   }
 ];
 

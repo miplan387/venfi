@@ -44,8 +44,7 @@ export const NewsFeed = () => {
                 padding: '1.25rem',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
-                cursor: 'pointer'
+                justifyContent: 'space-between'
               }}
             >
               <div>
@@ -65,7 +64,20 @@ export const NewsFeed = () => {
                   lineHeight: 1.45,
                   marginBottom: '0.75rem'
                 }}>
-                  {news.title}
+                  <a
+                    href={news.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#ffffff',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  >
+                    {news.title}
+                  </a>
                 </h4>
               </div>
 
@@ -77,10 +89,45 @@ export const NewsFeed = () => {
                 borderTop: '1px solid var(--border-subtle)',
                 fontSize: '0.78rem'
               }}>
-                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{news.source}</span>
-                <span style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                <a
+                  href={news.sourceUrl || news.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#ffffff';
+                    e.currentTarget.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                    e.currentTarget.style.textDecoration = 'none';
+                  }}
+                >
+                  {news.source}
+                </a>
+                <a
+                  href={news.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    transition: 'opacity 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.75')}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                >
                   Leer <ExternalLink size={12} />
-                </span>
+                </a>
               </div>
             </div>
           ))}

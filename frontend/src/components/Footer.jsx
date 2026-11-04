@@ -27,7 +27,7 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
               }}>
                 <img
                   src="/venfi-icon.png"
-                  alt="Venfi Logo"
+                  alt="Venfidata Logo"
                   style={{
                     width: '26px',
                     height: '26px',
@@ -40,7 +40,7 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
                 fontSize: '1.45rem',
                 lineHeight: 1.1
               }}>
-                VENFI
+                VENFIDATA
               </span>
             </div>
 
@@ -178,10 +178,10 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
           margin: '0 auto'
         }}>
           <p style={{ lineHeight: 1.6, background: 'rgba(251, 191, 36, 0.05)', padding: '0.85rem 1.25rem', borderRadius: '10px', border: '1px solid rgba(251, 191, 36, 0.2)', color: '#e2e8f0' }}>
-            ⚠️ AVISO LEGAL: Las tasas mostradas en Venfi corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfi es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
+            ⚠️ AVISO LEGAL: Las tasas mostradas en Venfidata corresponden exclusivamente a fuentes oficiales (Banco Central de Venezuela) y referencias internacionales de carácter informativo. Venfidata es una plataforma de información financiera y publicidad digital; no promueve, difunde ni facilita tipos de cambio no oficiales. Para operaciones formales, consulte siempre la tasa oficial del BCV.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem', marginTop: '0.5rem' }}>
-            <span>© {new Date().getFullYear()} Venfi. Construido con</span>
+            <span>© 2026 Venfidata. Construido con</span>
             <Heart size={12} color="#ff4757" fill="#ff4757" />
             <span>para Venezuela y el mundo.</span>
           </div>

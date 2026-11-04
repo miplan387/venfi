@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Info
 } from 'lucide-react';
+import { MiniTrendChart } from './MiniTrendChart';
 
 const GRAMS_PER_TROY_OUNCE = 31.1035;
 const GRAMS_PER_KILOGRAM = 1000;
@@ -148,6 +149,8 @@ export const GoldPriceCard = () => {
       badgeClass: 'badge-gold',
       price: troyPrice,
       unitLabel: 'por onza troy (31.10 g)',
+      unitShort: 'USD/oz',
+      transformPrice: null,
       description: 'Mercados de futuros CME / LBMA y reservas de bancos centrales.',
       borderColor: 'rgba(251, 191, 36, 0.4)',
       bgGradient: 'linear-gradient(145deg, rgba(15, 23, 42, 0.85) 0%, rgba(33, 24, 10, 0.95) 100%)',
@@ -163,10 +166,12 @@ export const GoldPriceCard = () => {
       badgeClass: 'badge-emerald',
       price: gramPrice,
       unitLabel: 'por gramo (g)',
+      unitShort: 'USD/g',
+      transformPrice: (p) => Number((p / GRAMS_PER_TROY_OUNCE).toFixed(2)),
       description: 'Precio referencial para compra y venta en orfebrería y menudeo local.',
       borderColor: 'rgba(0, 245, 155, 0.35)',
       bgGradient: 'linear-gradient(145deg, rgba(15, 23, 42, 0.85) 0%, rgba(10, 28, 22, 0.95) 100%)',
-      accentColor: 'var(--color-primary)'
+      accentColor: '#00f59b'
     },
     {
       id: 'kilogram',
@@ -178,6 +183,8 @@ export const GoldPriceCard = () => {
       badgeClass: 'badge-blue',
       price: kgPrice,
       unitLabel: 'por kilogramo (1,000 g)',
+      unitShort: 'USD/kg',
+      transformPrice: (p) => Number(((p / GRAMS_PER_TROY_OUNCE) * GRAMS_PER_KILOGRAM).toFixed(2)),
       description: 'Formato estándar para lingotes Good Delivery y grandes custodias.',
       borderColor: 'rgba(56, 189, 248, 0.35)',
       bgGradient: 'linear-gradient(145deg, rgba(15, 23, 42, 0.85) 0%, rgba(10, 22, 38, 0.95) 100%)',
@@ -442,10 +449,21 @@ export const GoldPriceCard = () => {
                     USD
                   </span>
                 </div>
+
+                {/* Mini-Gráfico Sparkline con Indicador de Tendencia (7D / 30D) */}
+                <MiniTrendChart 
+                  commodityType="gold"
+                  accentColor={unitItem.accentColor}
+                  unit={unitItem.unitShort || 'USD'}
+                  transformPrice={unitItem.transformPrice}
+                  defaultDays={7}
+                  showControls={true}
+                  height={65}
+                />
               </div>
 
               {/* Pie de tarjeta con unidad y descripción */}
-              <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginTop: '0.75rem' }}>
                 <div style={{
                   fontSize: '0.8rem',
                   fontWeight: 700,
@@ -493,7 +511,7 @@ export const GoldPriceCard = () => {
             </div>
             <div>
               <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff' }}>
-                Conversión Métrica Verificada de Venfi
+                Conversión Métrica Verificada de Venfidata
               </span>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
                 Las conversiones se aplican directamente sobre la cotización oficial de la onza troy de Omkar Cloud utilizando los estándares métricos del Bureau Internacional de Pesas y Medidas.

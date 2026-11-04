@@ -6,7 +6,7 @@ import http from 'http';
 
 const runTests = async () => {
   console.log('🧪 ==============================================================');
-  console.log('🧪 INICIANDO SUITE DE PRUEBAS DE INTEGRACIÓN: VENFI BACKEND API');
+  console.log('🧪 INICIANDO SUITE DE PRUEBAS DE INTEGRACIÓN: VENFIDATA BACKEND API');
   console.log('🧪 ==============================================================\n');
 
   // Inicializar BD y Servidor de pruebas en puerto dinámico o 5001

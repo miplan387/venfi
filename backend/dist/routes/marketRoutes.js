@@ -7,6 +7,8 @@ const router = (0, express_1.Router)();
 router.get('/oil', (req, res) => marketController_1.marketController.getOilPrices(req, res));
 // GET /api/market/petroleo (alias en español)
 router.get('/petroleo', (req, res) => marketController_1.marketController.getOilPrices(req, res));
+// GET /api/market/history/:type (Historial y tendencia de oro o petróleo)
+router.get('/history/:type', (req, res) => marketController_1.marketController.getCommodityHistory(req, res));
 // GET /api/market (ruta raíz del módulo de mercado)
 router.get('/', (req, res) => marketController_1.marketController.getOilPrices(req, res));
 exports.default = router;

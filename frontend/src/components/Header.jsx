@@ -104,7 +104,7 @@ export const Header = ({
             }}>
               <img
                 src="/venfi-icon.png"
-                alt="Venfi Logo"
+                alt="Venfidata Logo"
                 style={{
                   width: '34px',
                   height: '34px',
@@ -128,10 +128,10 @@ export const Header = ({
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span className="venfi-brand-title" style={{
-                  fontSize: '1.55rem',
+                  fontSize: '1.38rem',
                   lineHeight: 1.1
                 }}>
-                  VENFI
+                  VENFIDATA
                 </span>
                 <span className="badge badge-emerald" style={{
                   fontSize: '0.62rem',
@@ -215,6 +215,9 @@ export const Header = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           {/* Enlaces Desktop */}
           <nav style={{ display: 'none', gap: '1.25rem', marginRight: '0.5rem' }} className="desktop-nav">
+            <a href="#ranking" style={{ color: 'var(--color-gold)', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <Sparkles size={14} /> Top 10
+            </a>
             <a href="#tasas" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 600, transition: 'color 0.2s' }}>
               Tasas
             </a>
@@ -223,9 +226,6 @@ export const Header = ({
             </a>
             <a href="#remesas" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 600, transition: 'color 0.2s' }}>
               Remesas
-            </a>
-            <a href="#ranking" style={{ color: 'var(--color-gold)', textDecoration: 'none', fontSize: '0.88rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Sparkles size={14} /> Top 10
             </a>
           </nav>
 
@@ -398,6 +398,13 @@ export const Header = ({
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <a 
+              href="#ranking" 
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ color: 'var(--color-gold)', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 700 }}
+            >
+              🏆 Ranking Top 10
+            </a>
+            <a 
               href="#tasas" 
               onClick={() => setMobileMenuOpen(false)}
               style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
@@ -417,13 +424,6 @@ export const Header = ({
               style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
             >
               Comparador de Remesas
-            </a>
-            <a 
-              href="#ranking" 
-              onClick={() => setMobileMenuOpen(false)}
-              style={{ color: 'var(--color-gold)', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 700 }}
-            >
-              🏆 Ranking Top 10
             </a>
           </nav>
         </div>

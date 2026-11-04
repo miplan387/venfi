@@ -124,7 +124,7 @@ export const AuthModal = ({ isOpen, onClose, defaultTab = 'login', onSuccess, on
           </span>
         </div>
         <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.35rem' }}>
-          {tab === 'login' ? 'Iniciar Sesión en Venfi' : 'Crear Cuenta de Usuario'}
+          {tab === 'login' ? 'Iniciar Sesión en Venfidata' : 'Crear Cuenta de Usuario'}
         </h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
           {tab === 'login'

@@ -578,7 +578,7 @@ export const RemittanceComparator = ({ providers: initialProviders }) => {
               <br />
               <strong style={{ color: 'var(--color-primary)' }}>🔄 Mercado Paralelo & P2P (Binance, Airtm, Zoom, MoneyGram):</strong> Plataformas globales de libre intercambio entre particulares cuyas tasas corresponden a la oferta y demanda de criptoactivos (USDT) y mercados internacionales.
               <br />
-              <em>Venfi es un comparador tecnológico e informativo independiente. No custodia fondos, no capta recursos del público ni realiza intermediación cambiaria directa.</em>
+              <em>Venfidata es un comparador tecnológico e informativo independiente. No custodia fondos, no capta recursos del público ni realiza intermediación cambiaria directa.</em>
             </p>
           </div>
         </div>
