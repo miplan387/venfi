@@ -11,6 +11,7 @@ import visitsRoutes from './visitsRoutes';
 import paymentMethodsRoutes from './paymentMethodsRoutes';
 import marketRoutes from './marketRoutes';
 import goldRoutes from './goldRoutes';
+import zonesRoutes from './zonesRoutes';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/payments/methods', paymentMethodsRoutes);
 router.use('/market', marketRoutes);
 router.use('/market', goldRoutes);
 router.use('/gold', goldRoutes);
+router.use('/zones', zonesRoutes);
 
 
 

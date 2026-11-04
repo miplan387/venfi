@@ -12,7 +12,9 @@ exports.createPaymentSchema = zod_1.z.object({
         slogan: zod_1.z.string().min(5).max(255),
         category: zod_1.z.string().default('General'),
         avatar: zod_1.z.string().default('🚀'),
-        paymentMethod: zod_1.z.string().default('binance')
+        paymentMethod: zod_1.z.string().default('binance'),
+        zoneKey: zod_1.z.string().optional().default('nacional'),
+        zone: zod_1.z.string().optional()
     })
 });
 exports.paymentWebhookSchema = zod_1.z.object({

@@ -5,9 +5,11 @@ const rankingService_1 = require("../services/rankingService");
 class RankingController {
     async getRanking(req, res) {
         try {
-            const top10 = await rankingService_1.rankingService.getTop10();
+            const zoneKey = req.query.zone || req.query.zone_key || 'nacional';
+            const top10 = await rankingService_1.rankingService.getTop10(zoneKey);
             res.status(200).json({
                 success: true,
+                zone: zoneKey,
                 count: top10.length,
                 data: top10,
                 nextRotationHours: 24
@@ -23,10 +25,11 @@ class RankingController {
     async trackClick(req, res) {
         try {
             const position = parseInt(req.params.position, 10);
+            const zoneKey = req.query.zone || req.body?.zone || 'nacional';
             const ip = req.ip || req.headers['x-forwarded-for']?.toString() || '127.0.0.1';
             const referrer = req.body?.referrer || req.headers.referer || 'direct';
             const userAgent = req.body?.userAgent || req.headers['user-agent'] || 'unknown';
-            const result = await rankingService_1.rankingService.trackClick(position, { ip, referrer, userAgent });
+            const result = await rankingService_1.rankingService.trackClick(position, { ip, referrer, userAgent }, zoneKey);
             res.status(200).json({
                 success: true,
                 message: 'Clic registrado con éxito',

@@ -14,11 +14,85 @@ import {
   Tag
 } from 'lucide-react';
 import { RankBadge } from './RankBadge';
+import { ZoneSelector } from './ZoneSelector';
+
+// Función auxiliar para normalizar los campos de los slots
+const normalizeSlot = (s) => {
+  if (!s) return null;
+  return {
+    id: s.id,
+    position: s.position,
+    businessName: s.businessName || s.business_name || 'Espacio Publicitario Disponible ✨',
+    slogan: s.slogan || '',
+    category: s.category || 'General',
+    avatar: s.avatar || (s.position === 1 ? '👑' : s.position === 2 ? '🥈' : s.position === 3 ? '🥉' : '🚀'),
+    url: s.url || s.target_url || s.targetUrl || '#',
+    clicks: s.clicks ?? s.clicks_received ?? 0,
+    impressions: s.impressions ?? s.views_received ?? 0,
+    tier: s.tier || (s.position === 1 ? 'gold' : s.position <= 3 ? 'silver' : 'dark'),
+    amountPaid: Number(s.amountPaid ?? s.amount_paid ?? 0),
+    verified: Boolean(s.verified || (Number(s.amount_paid || s.amountPaid || 0) > 0)),
+    expiresInHours: s.expiresInHours || 24,
+    tags: s.tags || ['Venezuela', 'Publicidad'],
+    zoneKey: s.zone_key || s.zoneKey || 'nacional'
+  };
+};
 
 // Función auxiliar para obtener el anunciante del puesto #1 (Oro)
 export const getSlot1 = (slots) => slots?.find(s => s.position === 1);
 
-export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
+export const TopRanking = ({ 
+  slots: initialSlots = [], 
+  selectedZone: propZone, 
+  onZoneChange, 
+  onOpenAdvertise, 
+  onTrackClick 
+}) => {
+  const [selectedZone, setSelectedZone] = useState(propZone || 'nacional');
+  const [rankingSlots, setRankingSlots] = useState(initialSlots || []);
+  const [loading, setLoading] = useState(false);
+
+  // Sincronizar si cambia propZone desde el padre
+  useEffect(() => {
+    if (propZone && propZone !== selectedZone) {
+      setSelectedZone(propZone);
+    }
+  }, [propZone]);
+
+  // Fetch del ranking según la zona seleccionada
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRanking = async () => {
+      setLoading(true);
+      try {
+        let res;
+        try {
+          res = await fetch(`/api/ranking?zone=${selectedZone}`);
+        } catch {
+          res = await fetch(`http://localhost:5000/api/ranking?zone=${selectedZone}`);
+        }
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && isMounted) {
+            setRankingSlots(json.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Error al cargar ranking de zona:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchRanking();
+    return () => { isMounted = false; };
+  }, [selectedZone]);
+
+  const handleZoneChange = (zoneKey) => {
+    setSelectedZone(zoneKey);
+    if (onZoneChange) onZoneChange(zoneKey);
+  };
+
   // Temporizador de cuenta regresiva (simulación de ciclo de 24 horas)
   const [timeLeft, setTimeLeft] = useState({ hours: 5, minutes: 42, seconds: 18 });
 
@@ -38,10 +112,18 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const slot1 = slots.find(s => s.position === 1);
-  const slot2 = slots.find(s => s.position === 2);
-  const slot3 = slots.find(s => s.position === 3);
-  const slotsDark = slots.filter(s => s.position >= 4 && s.position <= 10);
+  const isNational = (selectedZone || 'nacional').toLowerCase() === 'nacional';
+  const pricePos1 = isNational ? 15 : 10;
+  const pricePos2 = isNational ? 10 : 6;
+  const pricePos3 = isNational ? 10 : 4;
+
+  const normalizedList = rankingSlots.map(normalizeSlot).filter(Boolean);
+  const slot1 = normalizedList.find(s => s.position === 1);
+  const slot2 = normalizedList.find(s => s.position === 2);
+  const slot3 = normalizedList.find(s => s.position === 3);
+  const slotsDark = isNational 
+    ? normalizedList.filter(s => s.position >= 4 && s.position <= 10)
+    : [];
 
   const formatTime = (num) => num.toString().padStart(2, '0');
 
@@ -78,6 +160,9 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
     <section id="ranking" style={{ padding: '3.5rem 0 4.5rem 0', position: 'relative' }}>
       <span id="ranking-section" style={{ position: 'absolute', top: '-20px' }}></span>
       <div className="container">
+        {/* SELECTOR DE ZONAS GEOGRÁFICAS */}
+        <ZoneSelector selectedZone={selectedZone} onZoneChange={handleZoneChange} />
+
         {/* HEADER DEL RANKING */}
         <div style={{
           textAlign: 'center',
@@ -96,7 +181,7 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
           }}>
             <Crown size={16} color="var(--color-gold)" />
             <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-gold)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              Muro de la Fama Comercial • Venezuela
+              {isNational ? 'Muro de la Fama Comercial • Venezuela' : `Ranking Comercial Regional • ${selectedZone.toUpperCase()}`}
             </span>
           </div>
 
@@ -109,11 +194,13 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
             WebkitTextFillColor: 'transparent',
             marginBottom: '0.75rem'
           }}>
-            Ranking Top 10 de Marcas y Emprendedores
+            Ranking {isNational ? 'Top 10' : 'Top 3'} de Marcas y Emprendedores
           </h2>
 
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6 }}>
-            El escaparate publicitario digital más codiciado de Venezuela. Las marcas líderes compiten diariamente por la máxima visibilidad frente a miles de compradores.
+            {isNational
+              ? 'El escaparate publicitario digital más codiciado de Venezuela. Las marcas líderes compiten diariamente por la máxima visibilidad frente a miles de compradores.'
+              : `Espacio exclusivo para marcas y comercios en ${selectedZone.charAt(0).toUpperCase() + selectedZone.slice(1)}. Máxima visibilidad regional para clientes locales.`}
           </p>
 
           {/* TEMPORIZADOR DE CUENTA REGRESIVA */}
@@ -237,7 +324,7 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
                       href={slot1.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => onTrackClick(slot1.position)}
+                      onClick={() => onTrackClick && onTrackClick(slot1.position, selectedZone)}
                       className="btn btn-primary"
                       style={{ fontSize: '1rem', padding: '0.8rem 1.6rem' }}
                     >
@@ -246,12 +333,12 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
                     </a>
 
                     <button
-                      onClick={onOpenAdvertise}
+                      onClick={() => onOpenAdvertise && onOpenAdvertise(selectedZone)}
                       className="btn btn-gold"
                       style={{ fontSize: '0.95rem', padding: '0.8rem 1.4rem' }}
                     >
                       <Flame size={18} />
-                      <span>Desbancar #1 por $15</span>
+                      <span>{slot1.amountPaid > 0 ? `Desbancar #1 por $${pricePos1}` : `Ocupar #1 por $${pricePos1}`}</span>
                     </button>
                   </div>
                 </div>
@@ -312,7 +399,7 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
                     borderTop: '1px solid var(--border-subtle)'
                   }}>
                     <span>Expira en: ~{slot1.expiresInHours} horas</span>
-                    <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Inversión: $15.00 USDT</span>
+                    <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Inversión: ${pricePos1}.00 USDT</span>
                   </div>
                 </div>
               </div>
@@ -331,6 +418,7 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
         }}>
           {[slot2, slot3].filter(Boolean).map((slot) => {
             const style = getPodiumStyle(slot.position);
+            const slotPrice = slot.position === 2 ? pricePos2 : pricePos3;
             return (
               <div
                 key={slot.position}
@@ -405,7 +493,7 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
                       href={slot.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => onTrackClick(slot.position)}
+                      onClick={() => onTrackClick && onTrackClick(slot.position, selectedZone)}
                       className="btn btn-secondary"
                       style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
                     >
@@ -414,11 +502,11 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
                     </a>
 
                     <button
-                      onClick={onOpenAdvertise}
+                      onClick={() => onOpenAdvertise && onOpenAdvertise(selectedZone)}
                       className="btn btn-primary"
                       style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
                     >
-                      <span>Pautar $10</span>
+                      <span>Pautar ${slotPrice}</span>
                     </button>
                   </div>
                 </div>
@@ -428,111 +516,113 @@ export const TopRanking = ({ slots, onOpenAdvertise, onTrackClick }) => {
         </div>
 
         {/* =========================================================================
-            PUESTOS #4 AL #10: TARJETAS COMPACTAS OSCURAS
+            PUESTOS #4 AL #10: TARJETAS COMPACTAS OSCURAS (SÓLO RANKING NACIONAL)
            ========================================================================= */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.65)',
-          borderRadius: '20px',
-          border: '1px solid var(--border-subtle)',
-          padding: '1.5rem',
-          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.4)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Award size={18} color="var(--color-primary)" /> Puestos del #4 al #10
-            </h3>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-              Tarifa estándar: $5.00 / día
-            </span>
-          </div>
+        {isNational && slotsDark.length > 0 && (
+          <div style={{
+            background: 'rgba(15, 23, 42, 0.65)',
+            borderRadius: '20px',
+            border: '1px solid var(--border-subtle)',
+            padding: '1.5rem',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.4)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Award size={18} color="var(--color-primary)" /> Puestos del #4 al #10
+              </h3>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Tarifa estándar: $5.00 / día
+              </span>
+            </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {slotsDark.map((slot) => {
-              const isAvailable = slot.amountPaid === 0;
-              return (
-                <div
-                  key={slot.position}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '1rem',
-                    alignItems: 'center',
-                    padding: '0.85rem 1.25rem',
-                    background: isAvailable ? 'rgba(0, 245, 155, 0.04)' : 'rgba(6, 10, 18, 0.6)',
-                    border: isAvailable ? '1px dashed var(--border-primary)' : '1px solid var(--border-subtle)',
-                    borderRadius: '12px',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {/* Número y Nombre */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <span className="font-mono" style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 900,
-                      color: isAvailable ? 'var(--color-primary)' : 'var(--text-muted)',
-                      width: '32px'
-                    }}>
-                      #{slot.position}
-                    </span>
-                    <div>
-                      <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: isAvailable ? 'var(--color-primary)' : '#ffffff' }}>
-                        {slot.businessName}
-                      </h5>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {slot.category}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {slotsDark.map((slot) => {
+                const isAvailable = slot.amountPaid === 0;
+                return (
+                  <div
+                    key={slot.position}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem',
+                      alignItems: 'center',
+                      padding: '0.85rem 1.25rem',
+                      background: isAvailable ? 'rgba(0, 245, 155, 0.04)' : 'rgba(6, 10, 18, 0.6)',
+                      border: isAvailable ? '1px dashed var(--border-primary)' : '1px solid var(--border-subtle)',
+                      borderRadius: '12px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {/* Número y Nombre */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                      <span className="font-mono" style={{
+                        fontSize: '1.1rem',
+                        fontWeight: 900,
+                        color: isAvailable ? 'var(--color-primary)' : 'var(--text-muted)',
+                        width: '32px'
+                      }}>
+                        #{slot.position}
                       </span>
+                      <div>
+                        <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: isAvailable ? 'var(--color-primary)' : '#ffffff' }}>
+                          {slot.businessName}
+                        </h5>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {slot.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Slogan */}
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {slot.slogan}
+                    </div>
+
+                    {/* Clics y Acción */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.85rem' }}>
+                      {!isAvailable && (
+                        <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                          {slot.clicks} clics
+                        </span>
+                      )}
+
+                      {isAvailable ? (
+                        <button
+                          onClick={() => onOpenAdvertise && onOpenAdvertise(selectedZone)}
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.78rem', padding: '0.35rem 0.85rem' }}
+                        >
+                          <Zap size={13} /> ¡Ocupar por $5!
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <a
+                            href={slot.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => onTrackClick && onTrackClick(slot.position, selectedZone)}
+                            className="btn btn-secondary"
+                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                          >
+                            <ExternalLink size={13} />
+                          </a>
+                          <button
+                            onClick={() => onOpenAdvertise && onOpenAdvertise(selectedZone)}
+                            className="btn btn-secondary"
+                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                            title="Superar posición"
+                          >
+                            Subir
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {/* Slogan */}
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {slot.slogan}
-                  </div>
-
-                  {/* Clics y Acción */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.85rem' }}>
-                    {!isAvailable && (
-                      <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        {slot.clicks} clics
-                      </span>
-                    )}
-
-                    {isAvailable ? (
-                      <button
-                        onClick={onOpenAdvertise}
-                        className="btn btn-primary"
-                        style={{ fontSize: '0.78rem', padding: '0.35rem 0.85rem' }}
-                      >
-                        <Zap size={13} /> ¡Ocupar por $5!
-                      </button>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <a
-                          href={slot.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => onTrackClick(slot.position)}
-                          className="btn btn-secondary"
-                          style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
-                        >
-                          <ExternalLink size={13} />
-                        </a>
-                        <button
-                          onClick={onOpenAdvertise}
-                          className="btn btn-secondary"
-                          style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
-                          title="Superar posición"
-                        >
-                          Subir
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

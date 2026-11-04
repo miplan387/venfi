@@ -38,24 +38,26 @@ const db_1 = require("../database/db");
 const rankingService_1 = require("./rankingService");
 const binancePayService_1 = require("./binancePayService");
 const ratesService_1 = require("./ratesService");
+const zonesService_1 = require("./zonesService");
 const crypto_1 = require("crypto");
 class PaymentService {
     /**
-     * Crea una nueva orden de pago para pautar en el ranking (Binance Pay o Zelle)
+     * Crea una nueva orden de pago para pautar en el ranking (Binance Pay, Zinli o Zelle)
      */
     async createPaymentOrder(userId, data) {
         const paymentMethod = data.paymentMethod || 'binance';
+        const zoneKey = (data.zoneKey || data.zone || 'nacional').toLowerCase().trim();
         const duration = data.durationHours || 24;
         const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
         const orderId = `VENFI_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
         const zellePaymentId = (0, crypto_1.randomUUID)();
-        // Validar precio mínimo según posición requerida
-        const expectedAmount = data.position === 1 ? 15.00 : (data.position <= 3 ? 10.00 : 5.00);
+        // Validar precio mínimo según zona y posición requerida
+        const expectedAmount = await zonesService_1.zonesService.getPriceForPosition(zoneKey, data.position);
         const finalAmount = Math.max(data.amountUsd, expectedAmount);
         let paymentRecord;
         if (db_1.db.isPostgresActive) {
-            const res = await db_1.db.query(`INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at)
-         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12)
+            const res = await db_1.db.query(`INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at, zone_key)
+         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`, [
                 orderId,
                 userId || null,
@@ -68,7 +70,8 @@ class PaymentService {
                 data.slogan,
                 data.category || 'General',
                 data.avatar || '🚀',
-                expiresAt
+                expiresAt,
+                zoneKey
             ]);
             paymentRecord = res.rows[0];
             // Si es Zelle o Zinli, registrar en la tabla zelle_payments
@@ -94,7 +97,8 @@ class PaymentService {
                 category: data.category || 'General',
                 avatar: data.avatar || '🚀',
                 created_at: new Date().toISOString(),
-                expires_at: expiresAt.toISOString()
+                expires_at: expiresAt.toISOString(),
+                zone_key: zoneKey
             };
             store.payments.push(paymentRecord);
             if (paymentMethod === 'zelle' || paymentMethod === 'zinli') {
@@ -206,7 +210,8 @@ class PaymentService {
                     category: payment.category,
                     avatar: payment.avatar,
                     amountPaid: Number(payment.amount_usd),
-                    durationHours: payment.duration_hours
+                    durationHours: payment.duration_hours,
+                    zoneKey: payment.zone_key || 'nacional'
                 });
                 // Crear notificación de confirmación
                 if (payment.user_id) {
@@ -240,7 +245,8 @@ class PaymentService {
                 category: payment.category,
                 avatar: payment.avatar,
                 amountPaid: Number(payment.amount_usd),
-                durationHours: payment.duration_hours
+                durationHours: payment.duration_hours,
+                zoneKey: payment.zone_key || 'nacional'
             });
             if (payment.user_id) {
                 store.notifications.push({
@@ -387,7 +393,8 @@ class PaymentService {
                     category: payment.category,
                     avatar: payment.avatar,
                     amountPaid: Number(payment.amount_usd),
-                    durationHours: payment.duration_hours
+                    durationHours: payment.duration_hours,
+                    zoneKey: payment.zone_key || 'nacional'
                 });
                 // Crear notificación para el usuario
                 if (payment.user_id) {
@@ -518,11 +525,12 @@ class PaymentService {
      * 1. Solicita una orden de pago en Bolívares (VES) usando Pago Móvil
      */
     async createPagoMovilOrder(userId, orderData) {
+        const zoneKey = (orderData.zoneKey || orderData.zone_key || 'nacional').toLowerCase();
         const duration = orderData.durationHours || 24;
         const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
         const orderId = `VENFI_PM_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-        // Validar monto mínimo según puesto requerido
-        const expectedAmount = orderData.position === 1 ? 15.00 : (orderData.position <= 3 ? 10.00 : 5.00);
+        // Validar monto mínimo según zona y puesto requerido
+        const expectedAmount = await zonesService_1.zonesService.getPriceForPosition(zoneKey, orderData.position);
         const finalAmountUsd = Math.max(orderData.amountUsd || expectedAmount, expectedAmount);
         // Obtener tasa BCV oficial
         const bcvRate = await ratesService_1.ratesService.getBcvRate();
@@ -531,8 +539,8 @@ class PaymentService {
         if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`INSERT INTO payments (
           id, user_id, amount_usd, position, duration_hours, status, payment_method, 
-          business_name, target_url, slogan, category, avatar, expires_at
-        ) VALUES ($1, $2, $3, $4, $5, 'pending', 'pago_movil', $6, $7, $8, $9, $10, $11)
+          business_name, target_url, slogan, category, avatar, expires_at, zone_key
+        ) VALUES ($1, $2, $3, $4, $5, 'pending', 'pago_movil', $6, $7, $8, $9, $10, $11, $12)
         RETURNING *`, [
                 orderId,
                 userId || null,
@@ -544,7 +552,8 @@ class PaymentService {
                 orderData.slogan,
                 orderData.category || 'General',
                 orderData.avatar || '🚀',
-                expiresAt
+                expiresAt,
+                zoneKey
             ]);
             paymentRecord = res.rows[0];
         }
@@ -567,7 +576,8 @@ class PaymentService {
                 category: orderData.category || 'General',
                 avatar: orderData.avatar || '🚀',
                 created_at: new Date().toISOString(),
-                expires_at: expiresAt.toISOString()
+                expires_at: expiresAt.toISOString(),
+                zone_key: zoneKey
             };
             store.payments.push(paymentRecord);
         }
@@ -732,7 +742,8 @@ class PaymentService {
                 category: payment.category,
                 avatar: payment.avatar,
                 amountPaid: Number(payment.amount_usd),
-                durationHours: payment.duration_hours
+                durationHours: payment.duration_hours,
+                zoneKey: payment.zone_key || 'nacional'
             });
             if (payment.user_id) {
                 await db_1.db.query("INSERT INTO notifications (user_id, message, type) VALUES ($1, $2, 'payment')", [payment.user_id, `¡Pago Móvil verificado! Tu anuncio '${payment.business_name}' ha sido activado en el puesto #${payment.position} del Ranking.`]);
@@ -761,7 +772,8 @@ class PaymentService {
             category: payment.category,
             avatar: payment.avatar,
             amountPaid: Number(payment.amount_usd),
-            durationHours: payment.duration_hours
+            durationHours: payment.duration_hours,
+            zoneKey: payment.zone_key || 'nacional'
         });
         return {
             success: true,

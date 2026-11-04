@@ -1,45 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, ArrowRight, Sparkles } from 'lucide-react';
 
-export const EscaparateOro = ({ slots }) => {
+export const EscaparateOro = ({ slots, selectedZone = 'nacional', onOpenAdvertise }) => {
   const [activeSlot, setActiveSlot] = useState(null);
 
   useEffect(() => {
-    // 1. Intentar obtener el slot #1 de las props
-    const slotFromProps = slots?.find(s => s.position === 1);
-    if (slotFromProps) {
-      setActiveSlot(slotFromProps);
-      return;
-    }
+    let isMounted = true;
 
-    // 2. Fallback: consultar el endpoint /api/ranking si no viene en props
     const fetchTopSlot = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/ranking');
-        if (res.ok) {
+        let res;
+        try {
+          res = await fetch(`/api/ranking?zone=${selectedZone || 'nacional'}`);
+          if (!res.ok) throw new Error('Proxy error');
+        } catch {
+          res = await fetch(`http://localhost:5000/api/ranking?zone=${selectedZone || 'nacional'}`);
+        }
+        if (res && res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
+          if (json.success && Array.isArray(json.data) && isMounted) {
             const first = json.data.find(s => s.position === 1);
-            if (first) setActiveSlot(first);
+            if (first) {
+              setActiveSlot(first);
+              return;
+            }
           }
         }
       } catch (err) {
         console.warn('No se pudo cargar el slot #1 para el escaparate:', err);
       }
+
+      // Fallback a slots recibidos por props
+      if (isMounted && slots && slots.length > 0) {
+        const slotFromProps = slots.find(s => s.position === 1);
+        if (slotFromProps) setActiveSlot(slotFromProps);
+      }
     };
 
     fetchTopSlot();
-  }, [slots]);
+    return () => { isMounted = false; };
+  }, [selectedZone, slots]);
 
-  // Si no hay anunciante en el puesto #1, no se muestra nada
-  if (!activeSlot) return null;
+  const amountPaid = Number(activeSlot?.amountPaid ?? activeSlot?.amount_paid ?? 0);
+  const isUnoccupied = !activeSlot || amountPaid === 0;
 
-  const businessName = activeSlot.businessName || activeSlot.business_name || 'Líder del Ranking';
-  const avatar = activeSlot.avatar || activeSlot.logoUrl || activeSlot.logo_url || '👑';
-  const category = activeSlot.category || 'Top Anunciante';
+  const currentZoneKey = (selectedZone || 'nacional').toLowerCase();
+  const zoneName = currentZoneKey !== 'nacional'
+    ? (currentZoneKey.charAt(0).toUpperCase() + currentZoneKey.slice(1))
+    : 'tu ciudad';
+
+  const businessName = isUnoccupied
+    ? (currentZoneKey === 'nacional' ? '¡Sé el primer #1 Nacional!' : `¡Sé el primer #1 en ${zoneName}!`)
+    : (activeSlot.businessName || activeSlot.business_name || 'Líder del Ranking');
+
+  const avatar = isUnoccupied
+    ? '✨'
+    : (activeSlot.avatar || activeSlot.logoUrl || activeSlot.logo_url || '👑');
+
+  const category = isUnoccupied
+    ? 'ESPACIO DISPONIBLE'
+    : (activeSlot.category || 'Top Anunciante');
 
   const handleClick = (e) => {
     e.preventDefault();
+    if (isUnoccupied && onOpenAdvertise) {
+      onOpenAdvertise(selectedZone);
+      return;
+    }
     const target = document.getElementById('ranking-section') || document.getElementById('ranking');
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -136,7 +163,7 @@ export const EscaparateOro = ({ slots }) => {
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        title="Haz clic para ver el Ranking Top 10"
+        title={isUnoccupied ? `¡Puesto #1 Disponible! Haz clic para pautar en ${zoneName}` : "Haz clic para ver el Ranking Top"}
         className="animate-gold-pulse escaparate-oro-container"
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -164,7 +191,7 @@ export const EscaparateOro = ({ slots }) => {
         {/* Información del Anunciante */}
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.15rem' }}>
-            {/* Badge 🏆 #1 en dorado */}
+            {/* Badge 🏆 #1 o DISPONIBLE en dorado */}
             <span
               style={{
                 background: 'linear-gradient(135deg, #FFD700 0%, #f59e0b 100%)',
@@ -180,7 +207,7 @@ export const EscaparateOro = ({ slots }) => {
                 lineHeight: 1
               }}
             >
-              🏆 #1
+              {isUnoccupied ? 'DISPONIBLE' : '🏆 #1'}
             </span>
             <span className="escaparate-category">
               {category}
@@ -193,7 +220,7 @@ export const EscaparateOro = ({ slots }) => {
           </span>
         </div>
 
-        {/* Indicador de Clic hacia el ranking */}
+        {/* Indicador de Clic hacia el ranking o Pautar */}
         <div
           style={{
             display: 'flex',
@@ -204,23 +231,44 @@ export const EscaparateOro = ({ slots }) => {
             flexShrink: 0
           }}
         >
-          <div
-            style={{
-              background: 'rgba(255, 215, 0, 0.15)',
-              border: '1px solid rgba(255, 215, 0, 0.4)',
-              borderRadius: '8px',
-              width: '26px',
-              height: '26px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFD700',
-              fontSize: '0.85rem'
-            }}
-            title="Ver en el ranking"
-          >
-            👉
-          </div>
+          {isUnoccupied ? (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #FFD700 0%, #f59e0b 100%)',
+                color: '#070b14',
+                borderRadius: '8px',
+                padding: '0.22rem 0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.2rem',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                boxShadow: '0 0 10px rgba(255, 215, 0, 0.4)'
+              }}
+              title="Pautar ahora"
+            >
+              <span>Pautar</span>
+              <ArrowRight size={12} />
+            </div>
+          ) : (
+            <div
+              style={{
+                background: 'rgba(255, 215, 0, 0.15)',
+                border: '1px solid rgba(255, 215, 0, 0.4)',
+                borderRadius: '8px',
+                width: '26px',
+                height: '26px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFD700',
+                fontSize: '0.85rem'
+              }}
+              title="Ver en el ranking"
+            >
+              👉
+            </div>
+          )}
         </div>
       </aside>
     </>

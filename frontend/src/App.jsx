@@ -37,6 +37,7 @@ export function AppContent() {
   const [providers, setProviders] = useState(initialRemittanceProviders);
   const [slots, setSlots] = useState(initialRankingSlots);
   const [selectedRateKey, setSelectedRateKey] = useState('bcv');
+  const [selectedZone, setSelectedZone] = useState('nacional');
   const [currentView, setCurrentView] = useState(() => {
     const path = window.location.pathname;
     const search = window.location.search;
@@ -57,7 +58,10 @@ export function AppContent() {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  const handleOpenAdvertise = () => {
+  const handleOpenAdvertise = (zone) => {
+    if (zone && typeof zone === 'string') {
+      setSelectedZone(zone);
+    }
     if (!isAuthenticated) {
       setIsAuthOpen(true);
     } else {
@@ -225,6 +229,8 @@ export function AppContent() {
           {/* Sección 3: Ranking Publicitario Top 10 con Puesto #1 VIP */}
           <TopRanking 
             slots={slots}
+            selectedZone={selectedZone}
+            onZoneChange={setSelectedZone}
             onOpenAdvertise={handleOpenAdvertise}
             onTrackClick={handleTrackClick}
           />
@@ -244,10 +250,14 @@ export function AppContent() {
       {currentView === 'portal' && (
         <>
           <FloatingCta 
-            onOpenAdvertise={handleOpenAdvertise}
+            onOpenAdvertise={() => handleOpenAdvertise(selectedZone)}
           />
           {/* Escaparate #1 Oro en Esquina Superior Derecha */}
-          <EscaparateOro slots={slots} />
+          <EscaparateOro 
+            slots={slots} 
+            selectedZone={selectedZone}
+            onOpenAdvertise={handleOpenAdvertise}
+          />
         </>
       )}
 
@@ -258,7 +268,7 @@ export function AppContent() {
       <Footer 
         onOpenTerms={() => navigateTo('terms')}
         onOpenPrivacy={() => navigateTo('privacy')}
-        onOpenAdvertise={handleOpenAdvertise}
+        onOpenAdvertise={() => handleOpenAdvertise(selectedZone)}
         onOpenAdmin={() => navigateTo('admin_cards')}
       />
 
@@ -288,6 +298,7 @@ export function AppContent() {
         isOpen={isAdvertiseOpen}
         onClose={() => setIsAdvertiseOpen(false)}
         onAddOrUpdateSlot={handleAddOrUpdateSlot}
+        selectedZone={selectedZone}
         onNavigateToTerms={() => {
           setIsAdvertiseOpen(false);
           navigateTo('terms');

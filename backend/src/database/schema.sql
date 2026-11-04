@@ -197,4 +197,35 @@ CREATE TABLE IF NOT EXISTS commodity_history (
 
 CREATE INDEX IF NOT EXISTS idx_commodity_history_type_date ON commodity_history(commodity_type, recorded_at DESC);
 
+-- 11. TABLA: zones (Zonas Geográficas / Rankings Segmentados)
+CREATE TABLE IF NOT EXISTS zones (
+  id SERIAL PRIMARY KEY,
+  key VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  type VARCHAR(20) NOT NULL,
+  icon VARCHAR(10) DEFAULT '📍',
+  is_active BOOLEAN DEFAULT TRUE,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. TABLA: zone_pricing (Tarifas y Precios por Zona y Posición)
+CREATE TABLE IF NOT EXISTS zone_pricing (
+  id SERIAL PRIMARY KEY,
+  zone_key VARCHAR(50) NOT NULL REFERENCES zones(key),
+  position INT NOT NULL CHECK (position BETWEEN 1 AND 10),
+  tier VARCHAR(20) NOT NULL,
+  price_usd DECIMAL(10,2) NOT NULL,
+  duration_hours INT DEFAULT 24,
+  is_active BOOLEAN DEFAULT TRUE,
+  UNIQUE(zone_key, position)
+);
+
+ALTER TABLE ranking ADD COLUMN IF NOT EXISTS zone_key VARCHAR(50) DEFAULT 'nacional';
+CREATE INDEX IF NOT EXISTS idx_ranking_zone ON ranking(zone_key, position);
+
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS zone_key VARCHAR(50) DEFAULT 'nacional';
+CREATE INDEX IF NOT EXISTS idx_payments_zone ON payments(zone_key);
+
+
 

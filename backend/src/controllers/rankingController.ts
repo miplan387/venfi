@@ -4,9 +4,11 @@ import { rankingService } from '../services/rankingService';
 export class RankingController {
   public async getRanking(req: Request, res: Response): Promise<void> {
     try {
-      const top10 = await rankingService.getTop10();
+      const zoneKey = (req.query.zone as string) || (req.query.zone_key as string) || 'nacional';
+      const top10 = await rankingService.getTop10(zoneKey);
       res.status(200).json({
         success: true,
+        zone: zoneKey,
         count: top10.length,
         data: top10,
         nextRotationHours: 24
@@ -22,11 +24,12 @@ export class RankingController {
   public async trackClick(req: Request, res: Response): Promise<void> {
     try {
       const position = parseInt(req.params.position as string, 10);
+      const zoneKey = (req.query.zone as string) || (req.body?.zone as string) || 'nacional';
       const ip = req.ip || req.headers['x-forwarded-for']?.toString() || '127.0.0.1';
       const referrer = req.body?.referrer || req.headers.referer || 'direct';
       const userAgent = req.body?.userAgent || req.headers['user-agent'] || 'unknown';
 
-      const result = await rankingService.trackClick(position, { ip, referrer, userAgent });
+      const result = await rankingService.trackClick(position, { ip, referrer, userAgent }, zoneKey);
       res.status(200).json({
         success: true,
         message: 'Clic registrado con éxito',

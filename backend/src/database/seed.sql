@@ -57,3 +57,20 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Seed de Zonas Geográficas
+INSERT INTO zones (key, name, type, icon, sort_order) VALUES
+('nacional', 'Nacional', 'national', '🇻🇪', 1),
+('caracas', 'Caracas', 'city', '🏙️', 2),
+('maracaibo', 'Maracaibo', 'city', '🌉', 3),
+('valencia', 'Valencia', 'city', '🌆', 4)
+ON CONFLICT (key) DO NOTHING;
+
+-- Seed de Tarifas por Zona
+INSERT INTO zone_pricing (zone_key, position, tier, price_usd) VALUES
+('nacional', 1, 'gold', 15.00), ('nacional', 2, 'silver', 10.00), ('nacional', 3, 'silver', 10.00), ('nacional', 4, 'bronze', 5.00), ('nacional', 5, 'bronze', 5.00), ('nacional', 6, 'dark', 3.00), ('nacional', 7, 'dark', 3.00), ('nacional', 8, 'dark', 3.00), ('nacional', 9, 'dark', 3.00), ('nacional', 10, 'dark', 3.00),
+('caracas', 1, 'gold', 10.00), ('caracas', 2, 'silver', 6.00), ('caracas', 3, 'bronze', 4.00),
+('maracaibo', 1, 'gold', 10.00), ('maracaibo', 2, 'silver', 6.00), ('maracaibo', 3, 'bronze', 4.00),
+('valencia', 1, 'gold', 10.00), ('valencia', 2, 'silver', 6.00), ('valencia', 3, 'bronze', 4.00)
+ON CONFLICT (zone_key, position) DO NOTHING;
+
+

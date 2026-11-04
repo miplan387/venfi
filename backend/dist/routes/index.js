@@ -16,6 +16,7 @@ const visitsRoutes_1 = __importDefault(require("./visitsRoutes"));
 const paymentMethodsRoutes_1 = __importDefault(require("./paymentMethodsRoutes"));
 const marketRoutes_1 = __importDefault(require("./marketRoutes"));
 const goldRoutes_1 = __importDefault(require("./goldRoutes"));
+const zonesRoutes_1 = __importDefault(require("./zonesRoutes"));
 const router = (0, express_1.Router)();
 router.use('/auth', authRoutes_1.default);
 router.use('/ranking', rankingRoutes_1.default);
@@ -31,6 +32,7 @@ router.use('/payments/methods', paymentMethodsRoutes_1.default);
 router.use('/market', marketRoutes_1.default);
 router.use('/market', goldRoutes_1.default);
 router.use('/gold', goldRoutes_1.default);
+router.use('/zones', zonesRoutes_1.default);
 // Health check
 router.get('/health', (req, res) => {
     res.status(200).json({

@@ -21,6 +21,8 @@ class DatabaseManager {
         rates_history: [],
         zelle_payments: [],
         commodity_history: [],
+        zones: [],
+        zone_pricing: [],
         payment_methods: [
             { id: 1, key: 'binance', name: 'Binance Pay (USDT)', icon: '🟡', description: 'Pago instantáneo con criptomonedas y confirmación automática por Webhook.', fields: { merchantId: '284910482', currency: 'USDT' }, is_active: true, requires_approval: false, sort_order: 1 },
             { id: 2, key: 'zinli', name: 'Zinli (USD)', icon: '💳', description: 'Pago con Zinli, billetera digital en dólares con acreditación inmediata.', fields: { email: 'miplan3d@gmail.com', name: 'Venfidata Publicidad' }, is_active: true, requires_approval: true, sort_order: 2 },
@@ -245,6 +247,59 @@ class DatabaseManager {
                 await client.query(`
           UPDATE remittance_providers SET market_type = 'official' WHERE key IN ('italcambio', 'angulo_lopez', 'insular');
           UPDATE remittance_providers SET market_type = 'parallel' WHERE key IN ('binance_p2p', 'airtm', 'zinli', 'wally', 'zoom', 'moneygram');
+        `);
+                // Migración e inicialización de Zonas y Tarifas
+                await client.query(`
+          CREATE TABLE IF NOT EXISTS zones (
+            id SERIAL PRIMARY KEY,
+            key VARCHAR(50) UNIQUE NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            type VARCHAR(20) NOT NULL,
+            icon VARCHAR(10) DEFAULT '📍',
+            is_active BOOLEAN DEFAULT TRUE,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+          );
+
+          INSERT INTO zones (key, name, type, icon, sort_order) VALUES
+          ('nacional', 'Nacional', 'national', '🇻🇪', 1),
+          ('caracas', 'Caracas', 'city', '🏙️', 2),
+          ('maracaibo', 'Maracaibo', 'city', '🌉', 3),
+          ('valencia', 'Valencia', 'city', '🌆', 4)
+          ON CONFLICT (key) DO NOTHING;
+
+          CREATE TABLE IF NOT EXISTS zone_pricing (
+            id SERIAL PRIMARY KEY,
+            zone_key VARCHAR(50) NOT NULL REFERENCES zones(key),
+            position INT NOT NULL CHECK (position BETWEEN 1 AND 10),
+            tier VARCHAR(20) NOT NULL,
+            price_usd DECIMAL(10,2) NOT NULL,
+            duration_hours INT DEFAULT 24,
+            is_active BOOLEAN DEFAULT TRUE,
+            UNIQUE(zone_key, position)
+          );
+
+          INSERT INTO zone_pricing (zone_key, position, tier, price_usd) VALUES
+          ('nacional', 1, 'gold', 15.00), ('nacional', 2, 'silver', 10.00), ('nacional', 3, 'silver', 10.00), ('nacional', 4, 'bronze', 5.00), ('nacional', 5, 'bronze', 5.00), ('nacional', 6, 'dark', 3.00), ('nacional', 7, 'dark', 3.00), ('nacional', 8, 'dark', 3.00), ('nacional', 9, 'dark', 3.00), ('nacional', 10, 'dark', 3.00),
+          ('caracas', 1, 'gold', 10.00), ('caracas', 2, 'silver', 6.00), ('caracas', 3, 'bronze', 4.00),
+          ('maracaibo', 1, 'gold', 10.00), ('maracaibo', 2, 'silver', 6.00), ('maracaibo', 3, 'bronze', 4.00),
+          ('valencia', 1, 'gold', 10.00), ('valencia', 2, 'silver', 6.00), ('valencia', 3, 'bronze', 4.00)
+          ON CONFLICT (zone_key, position) DO NOTHING;
+
+          ALTER TABLE ranking ADD COLUMN IF NOT EXISTS zone_key VARCHAR(50) DEFAULT 'nacional';
+          CREATE INDEX IF NOT EXISTS idx_ranking_zone ON ranking(zone_key, position);
+          UPDATE ranking SET zone_key = 'nacional' WHERE zone_key IS NULL;
+          ALTER TABLE ranking DROP CONSTRAINT IF EXISTS ranking_position_key;
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ranking_zone_position_key') THEN
+              ALTER TABLE ranking ADD CONSTRAINT ranking_zone_position_key UNIQUE (zone_key, position);
+            END IF;
+          END $$;
+
+          ALTER TABLE payments ADD COLUMN IF NOT EXISTS zone_key VARCHAR(50) DEFAULT 'nacional';
+          CREATE INDEX IF NOT EXISTS idx_payments_zone ON payments(zone_key);
+          UPDATE payments SET zone_key = 'nacional' WHERE zone_key IS NULL;
         `);
                 // Ejecutar seed inicial si ranking está vacío
                 const rankingCountRes = await client.query('SELECT COUNT(*) FROM ranking');
@@ -490,6 +545,39 @@ class DatabaseManager {
                 views_received: 4500,
                 is_active: true
             }
+        ];
+        // Asignar zone_key nacional a los rankings por defecto
+        this.inMemoryDb.ranking.forEach(r => {
+            r.zone_key = 'nacional';
+        });
+        // Zonas iniciales
+        this.inMemoryDb.zones = [
+            { id: 1, key: 'nacional', name: 'Nacional', type: 'national', icon: '🇻🇪', is_active: true, sort_order: 1 },
+            { id: 2, key: 'caracas', name: 'Caracas', type: 'city', icon: '🏙️', is_active: true, sort_order: 2 },
+            { id: 3, key: 'maracaibo', name: 'Maracaibo', type: 'city', icon: '🌉', is_active: true, sort_order: 3 },
+            { id: 4, key: 'valencia', name: 'Valencia', type: 'city', icon: '🌆', is_active: true, sort_order: 4 }
+        ];
+        // Tarifas iniciales por zona
+        this.inMemoryDb.zone_pricing = [
+            { id: 1, zone_key: 'nacional', position: 1, tier: 'gold', price_usd: 15.00, duration_hours: 24, is_active: true },
+            { id: 2, zone_key: 'nacional', position: 2, tier: 'silver', price_usd: 10.00, duration_hours: 24, is_active: true },
+            { id: 3, zone_key: 'nacional', position: 3, tier: 'silver', price_usd: 10.00, duration_hours: 24, is_active: true },
+            { id: 4, zone_key: 'nacional', position: 4, tier: 'bronze', price_usd: 5.00, duration_hours: 24, is_active: true },
+            { id: 5, zone_key: 'nacional', position: 5, tier: 'bronze', price_usd: 5.00, duration_hours: 24, is_active: true },
+            { id: 6, zone_key: 'nacional', position: 6, tier: 'dark', price_usd: 3.00, duration_hours: 24, is_active: true },
+            { id: 7, zone_key: 'nacional', position: 7, tier: 'dark', price_usd: 3.00, duration_hours: 24, is_active: true },
+            { id: 8, zone_key: 'nacional', position: 8, tier: 'dark', price_usd: 3.00, duration_hours: 24, is_active: true },
+            { id: 9, zone_key: 'nacional', position: 9, tier: 'dark', price_usd: 3.00, duration_hours: 24, is_active: true },
+            { id: 10, zone_key: 'nacional', position: 10, tier: 'dark', price_usd: 3.00, duration_hours: 24, is_active: true },
+            { id: 11, zone_key: 'caracas', position: 1, tier: 'gold', price_usd: 10.00, duration_hours: 24, is_active: true },
+            { id: 12, zone_key: 'caracas', position: 2, tier: 'silver', price_usd: 6.00, duration_hours: 24, is_active: true },
+            { id: 13, zone_key: 'caracas', position: 3, tier: 'bronze', price_usd: 4.00, duration_hours: 24, is_active: true },
+            { id: 14, zone_key: 'maracaibo', position: 1, tier: 'gold', price_usd: 10.00, duration_hours: 24, is_active: true },
+            { id: 15, zone_key: 'maracaibo', position: 2, tier: 'silver', price_usd: 6.00, duration_hours: 24, is_active: true },
+            { id: 16, zone_key: 'maracaibo', position: 3, tier: 'bronze', price_usd: 4.00, duration_hours: 24, is_active: true },
+            { id: 17, zone_key: 'valencia', position: 1, tier: 'gold', price_usd: 10.00, duration_hours: 24, is_active: true },
+            { id: 18, zone_key: 'valencia', position: 2, tier: 'silver', price_usd: 6.00, duration_hours: 24, is_active: true },
+            { id: 19, zone_key: 'valencia', position: 3, tier: 'bronze', price_usd: 4.00, duration_hours: 24, is_active: true }
         ];
     }
     // Getters para acceso a la base de datos

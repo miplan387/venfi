@@ -17,7 +17,14 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateToTerms, onNavigateToPrivacy }) => {
+export const AdvertiseModal = ({ 
+  isOpen, 
+  onClose, 
+  onAddOrUpdateSlot, 
+  onNavigateToTerms, 
+  onNavigateToPrivacy,
+  selectedZone = 'nacional'
+}) => {
   const [step, setStep] = useState(1); // 1: Datos, 2: Posición, 3: Pago, 4: Éxito
   const [formData, setFormData] = useState({
     businessName: '',
@@ -26,7 +33,7 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
     slogan: '',
     category: 'Tecnología & Retail',
     avatar: '🚀',
-    selectedTier: 1, // 1: $15, 2: $10, 3: $5
+    selectedTier: 1, // 1: Gold, 2: Silver, 3: Bronze/Dark
     paymentMethod: 'binance', // dinámico según métodos activos
     referenceCode: '',
     proofImageUrl: '',
@@ -42,6 +49,24 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
   const [selectedMethodKey, setSelectedMethodKey] = useState('binance');
   const [methodConfig, setMethodConfig] = useState(null);
   const [loadingMethods, setLoadingMethods] = useState(true);
+
+  // Precios dinámicos según zona (Nacional o Ciudades)
+  const isNational = (selectedZone || 'nacional').toLowerCase() === 'nacional';
+  const prices = isNational 
+    ? { tier1: 15.00, tier2: 10.00, tier3: 5.00 }
+    : { tier1: 10.00, tier2: 6.00, tier3: 4.00 };
+
+  const getTierPrice = (tier) => {
+    if (tier === 1) return prices.tier1;
+    if (tier === 2) return prices.tier2;
+    return prices.tier3;
+  };
+
+  const getTargetPosition = (tier) => {
+    if (tier === 1) return 1;
+    if (tier === 2) return 2;
+    return isNational ? 4 : 3;
+  };
 
   // Cargar métodos de pago activos desde el backend
   useEffect(() => {
@@ -106,26 +131,50 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
     if (step === 2) {
       // Crear orden real de pago en el backend
       setIsSubmitting(true);
-      const amountUsd = formData.selectedTier === 1 ? 15.00 : (formData.selectedTier === 2 ? 10.00 : 5.00);
+      const amountUsd = getTierPrice(formData.selectedTier);
+      const targetPosition = getTargetPosition(formData.selectedTier);
       const targetUrl = formData.url.startsWith('http') ? formData.url : `https://${formData.url}`;
+      const zoneKey = selectedZone || 'nacional';
 
       try {
         if (formData.paymentMethod === 'pago_movil') {
-          const res = await fetch('http://localhost:5000/api/payments/pagomovil/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              position: formData.selectedTier === 1 ? 1 : (formData.selectedTier === 2 ? 2 : 4),
-              amountUsd,
-              durationHours: 24,
-              businessName: formData.businessName,
-              targetUrl,
-              slogan: formData.slogan,
-              category: formData.category,
-              avatar: formData.avatar || '🚀'
-            })
-          });
-          if (res.ok) {
+          let res;
+          try {
+            res = await fetch('/api/payments/pagomovil/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                position: targetPosition,
+                amountUsd,
+                durationHours: 24,
+                businessName: formData.businessName,
+                targetUrl,
+                slogan: formData.slogan,
+                category: formData.category,
+                avatar: formData.avatar || '🚀',
+                zoneKey
+              })
+            });
+            if (!res.ok) throw new Error('Proxy error');
+          } catch {
+            res = await fetch('http://localhost:5000/api/payments/pagomovil/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                position: targetPosition,
+                amountUsd,
+                durationHours: 24,
+                businessName: formData.businessName,
+                targetUrl,
+                slogan: formData.slogan,
+                category: formData.category,
+                avatar: formData.avatar || '🚀',
+                zoneKey
+              })
+            });
+          }
+
+          if (res && res.ok) {
             const json = await res.json();
             if (json.success && json.data) {
               setPaymentOrder(json.data);
@@ -133,23 +182,45 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
             }
           }
         } else {
-          const res = await fetch('http://localhost:5000/api/payments/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              position: formData.selectedTier === 1 ? 1 : (formData.selectedTier === 2 ? 2 : 4),
-              amountUsd,
-              durationHours: 24,
-              businessName: formData.businessName,
-              targetUrl,
-              slogan: formData.slogan,
-              category: formData.category,
-              avatar: formData.avatar || '🚀',
-              paymentMethod: formData.paymentMethod
-            })
-          });
+          let res;
+          try {
+            res = await fetch('/api/payments/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                position: targetPosition,
+                amountUsd,
+                durationHours: 24,
+                businessName: formData.businessName,
+                targetUrl,
+                slogan: formData.slogan,
+                category: formData.category,
+                avatar: formData.avatar || '🚀',
+                paymentMethod: formData.paymentMethod,
+                zoneKey
+              })
+            });
+            if (!res.ok) throw new Error('Proxy error');
+          } catch {
+            res = await fetch('http://localhost:5000/api/payments/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                position: targetPosition,
+                amountUsd,
+                durationHours: 24,
+                businessName: formData.businessName,
+                targetUrl,
+                slogan: formData.slogan,
+                category: formData.category,
+                avatar: formData.avatar || '🚀',
+                paymentMethod: formData.paymentMethod,
+                zoneKey
+              })
+            });
+          }
 
-          if (res.ok) {
+          if (res && res.ok) {
             const json = await res.json();
             if (json.success && json.data) {
               setPaymentOrder(json.data);
@@ -176,8 +247,14 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
       try {
         const orderId = paymentOrder?.orderId || paymentOrder?.paymentId;
         if (orderId) {
-          const res = await fetch(`http://localhost:5000/api/payments/pagomovil/qr/${orderId}`);
-          if (res.ok) {
+          let res;
+          try {
+            res = await fetch(`/api/payments/pagomovil/qr/${orderId}`);
+            if (!res.ok) throw new Error('Proxy error');
+          } catch {
+            res = await fetch(`http://localhost:5000/api/payments/pagomovil/qr/${orderId}`);
+          }
+          if (res && res.ok) {
             const json = await res.json();
             if (json.success && json.data) {
               setPagoMovilData(json.data);
@@ -186,23 +263,46 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
           }
         }
 
-        const amountUsd = formData.selectedTier === 1 ? 15.00 : (formData.selectedTier === 2 ? 10.00 : 5.00);
+        const amountUsd = getTierPrice(formData.selectedTier);
+        const targetPosition = getTargetPosition(formData.selectedTier);
         const targetUrl = formData.url.startsWith('http') ? formData.url : `https://${formData.url}`;
-        const createRes = await fetch('http://localhost:5000/api/payments/pagomovil/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            position: formData.selectedTier === 1 ? 1 : (formData.selectedTier === 2 ? 2 : 4),
-            amountUsd,
-            durationHours: 24,
-            businessName: formData.businessName,
-            targetUrl,
-            slogan: formData.slogan,
-            category: formData.category,
-            avatar: formData.avatar || '🚀'
-          })
-        });
-        if (createRes.ok) {
+        const zoneKey = selectedZone || 'nacional';
+        let createRes;
+        try {
+          createRes = await fetch('/api/payments/pagomovil/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              position: targetPosition,
+              amountUsd,
+              durationHours: 24,
+              businessName: formData.businessName,
+              targetUrl,
+              slogan: formData.slogan,
+              category: formData.category,
+              avatar: formData.avatar || '🚀',
+              zoneKey
+            })
+          });
+          if (!createRes.ok) throw new Error('Proxy error');
+        } catch {
+          createRes = await fetch('http://localhost:5000/api/payments/pagomovil/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              position: targetPosition,
+              amountUsd,
+              durationHours: 24,
+              businessName: formData.businessName,
+              targetUrl,
+              slogan: formData.slogan,
+              category: formData.category,
+              avatar: formData.avatar || '🚀',
+              zoneKey
+            })
+          });
+        }
+        if (createRes && createRes.ok) {
           const json = await createRes.json();
           if (json.success && json.data) {
             setPaymentOrder(json.data);
@@ -218,8 +318,8 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
   const handleFinalPayment = async () => {
     setIsSubmitting(true);
     const orderId = paymentOrder?.orderId || paymentOrder?.paymentId || `VENFI_${Date.now()}`;
-    const amountUsd = formData.selectedTier === 1 ? 15.00 : (formData.selectedTier === 2 ? 10.00 : 5.00);
-    const assignedPosition = formData.selectedTier === 1 ? 1 : (formData.selectedTier === 2 ? 2 : 4);
+    const amountUsd = getTierPrice(formData.selectedTier);
+    const assignedPosition = getTargetPosition(formData.selectedTier);
 
     try {
       if (formData.paymentMethod === 'pago_movil') {
@@ -294,6 +394,8 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
           category: formData.category,
           url: formData.url.startsWith('http') ? formData.url : `https://${formData.url}`,
           amountPaid: amountUsd,
+          zoneKey: selectedZone || 'nacional',
+          zone_key: selectedZone || 'nacional',
           clicks: 1,
           impressions: 25,
           expiresInHours: 24,
@@ -587,17 +689,30 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
            ========================================================================= */}
         {step === 2 && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-              <Crown size={20} color="var(--color-gold)" />
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-gold)', textTransform: 'uppercase' }}>
-                Paso 2 de 3: Posición
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Crown size={20} color="var(--color-gold)" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-gold)', textTransform: 'uppercase' }}>
+                  Paso 2 de 3: Posición
+                </span>
+              </div>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--text-secondary)',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '8px',
+                padding: '0.2rem 0.55rem'
+              }}>
+                📍 Zona: {selectedZone ? selectedZone.toUpperCase() : 'NACIONAL'}
               </span>
             </div>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.5rem' }}>
               Elige tu Nivel de Visibilidad
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Selecciona el puesto que deseas ocupar en el Ranking durante las próximas 24 horas:
+              Selecciona el puesto que deseas ocupar en el Ranking {isNational ? 'Nacional' : `de ${selectedZone.charAt(0).toUpperCase() + selectedZone.slice(1)}`} durante las próximas 24 horas:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -626,12 +741,12 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
                     </div>
                   </div>
                   <div className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--color-gold)' }}>
-                    $15.00
+                    ${prices.tier1.toFixed(2)}
                   </div>
                 </div>
               </div>
 
-              {/* Opción 2: Puestos #2-3 Silver */}
+              {/* Opción 2: Puestos #2-3 Silver (o #2 Silver) */}
               <div
                 onClick={() => setFormData({ ...formData, selectedTier: 2 })}
                 style={{
@@ -648,7 +763,7 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
                     <Sparkles size={22} color="#cbd5e1" />
                     <div>
                       <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
-                        PUESTO #2 o #3 SILVER
+                        {isNational ? 'PUESTO #2 o #3 SILVER' : 'PUESTO #2 SILVER'}
                       </h4>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                         Tarjeta plateada destacada + Badge Silver
@@ -656,12 +771,12 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
                     </div>
                   </div>
                   <div className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 900, color: '#cbd5e1' }}>
-                    $10.00
+                    ${prices.tier2.toFixed(2)}
                   </div>
                 </div>
               </div>
 
-              {/* Opción 3: Puestos #4-10 Dark */}
+              {/* Opción 3: Puestos #4-10 Dark (o #3 Bronze) */}
               <div
                 onClick={() => setFormData({ ...formData, selectedTier: 3 })}
                 style={{
@@ -678,15 +793,15 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
                     <ShieldCheck size={22} color="var(--color-primary)" />
                     <div>
                       <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
-                        PUESTO DEL #4 AL #10
+                        {isNational ? 'PUESTO DEL #4 AL #10' : 'PUESTO #3 BRONZE'}
                       </h4>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        Slot en el top oficial con tracking de clics
+                        {isNational ? 'Slot en el top oficial con tracking de clics' : 'Slot en el Top 3 local con tracking de clics'}
                       </p>
                     </div>
                   </div>
                   <div className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--color-primary)' }}>
-                    $5.00
+                    ${prices.tier3.toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -724,7 +839,7 @@ export const AdvertiseModal = ({ isOpen, onClose, onAddOrUpdateSlot, onNavigateT
               </span>
             </div>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.5rem' }}>
-              Completa tu Pago ({formData.selectedTier === 1 ? '$15.00' : formData.selectedTier === 2 ? '$10.00' : '$5.00'} USD)
+              Completa tu Pago (${getTierPrice(formData.selectedTier).toFixed(2)} USD)
             </h3>
 
             {/* Selector Dinámico de Método de Pago */}

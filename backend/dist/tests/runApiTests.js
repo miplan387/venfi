@@ -71,6 +71,13 @@ const runTests = async () => {
         // 6. Ranking Top 10 (GET /api/ranking)
         const rankingRes = await client.get('/api/ranking');
         assertTest('GET /api/ranking -> Consulta del Top 10 de anunciantes', rankingRes.status === 200 && rankingRes.data.data.length >= 10);
+        // 6b. Zonas Geográficas (GET /api/zones y GET /api/zones/:key/pricing)
+        const zonesRes = await client.get('/api/zones');
+        assertTest('GET /api/zones -> Lista de zonas geográficas segmentadas', zonesRes.status === 200 && zonesRes.data.data.length >= 4);
+        const caracasPricingRes = await client.get('/api/zones/caracas/pricing');
+        assertTest('GET /api/zones/caracas/pricing -> Precios de zona Caracas', caracasPricingRes.status === 200 && caracasPricingRes.data.data.length >= 3);
+        const caracasRankingRes = await client.get('/api/ranking?zone=caracas');
+        assertTest('GET /api/ranking?zone=caracas -> Consulta de ranking segmentado por zona', caracasRankingRes.status === 200 && caracasRankingRes.data.zone === 'caracas');
         // 7. Click Tracking (POST /api/ranking/click/:position)
         const clickRes = await client.post('/api/ranking/click/1', { referrer: 'venfi-test-suite' });
         assertTest('POST /api/ranking/click/1 -> Registro de clic en el ranking', clickRes.status === 200 && clickRes.data.success === true);

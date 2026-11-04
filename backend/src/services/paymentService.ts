@@ -2,6 +2,7 @@ import { db } from '../database/db';
 import { rankingService } from './rankingService';
 import { binancePayService } from './binancePayService';
 import { ratesService } from './ratesService';
+import { zonesService } from './zonesService';
 import { randomUUID } from 'crypto';
 
 export interface PagoMovilBankData {
@@ -14,7 +15,7 @@ export interface PagoMovilBankData {
 
 export class PaymentService {
   /**
-   * Crea una nueva orden de pago para pautar en el ranking (Binance Pay o Zelle)
+   * Crea una nueva orden de pago para pautar en el ranking (Binance Pay, Zinli o Zelle)
    */
   public async createPaymentOrder(userId: string | undefined, data: {
     position: number;
@@ -26,23 +27,26 @@ export class PaymentService {
     category?: string;
     avatar?: string;
     paymentMethod?: string;
+    zoneKey?: string;
+    zone?: string;
   }) {
     const paymentMethod = data.paymentMethod || 'binance';
+    const zoneKey = (data.zoneKey || data.zone || 'nacional').toLowerCase().trim();
     const duration = data.durationHours || 24;
     const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
     const orderId = `VENFI_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     const zellePaymentId = randomUUID();
 
-    // Validar precio mínimo según posición requerida
-    const expectedAmount = data.position === 1 ? 15.00 : (data.position <= 3 ? 10.00 : 5.00);
+    // Validar precio mínimo según zona y posición requerida
+    const expectedAmount = await zonesService.getPriceForPosition(zoneKey, data.position);
     const finalAmount = Math.max(data.amountUsd, expectedAmount);
 
     let paymentRecord: any;
 
     if (db.isPostgresActive) {
       const res = await db.query(
-        `INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at)
-         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at, zone_key)
+         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`,
         [
           orderId,
@@ -56,7 +60,8 @@ export class PaymentService {
           data.slogan,
           data.category || 'General',
           data.avatar || '🚀',
-          expiresAt
+          expiresAt,
+          zoneKey
         ]
       );
       paymentRecord = res.rows[0];
@@ -86,7 +91,8 @@ export class PaymentService {
         category: data.category || 'General',
         avatar: data.avatar || '🚀',
         created_at: new Date().toISOString(),
-        expires_at: expiresAt.toISOString()
+        expires_at: expiresAt.toISOString(),
+        zone_key: zoneKey
       };
       store.payments.push(paymentRecord);
 
@@ -215,7 +221,8 @@ export class PaymentService {
           category: payment.category,
           avatar: payment.avatar,
           amountPaid: Number(payment.amount_usd),
-          durationHours: payment.duration_hours
+          durationHours: payment.duration_hours,
+          zoneKey: payment.zone_key || 'nacional'
         });
 
         // Crear notificación de confirmación
@@ -258,7 +265,8 @@ export class PaymentService {
         category: payment.category,
         avatar: payment.avatar,
         amountPaid: Number(payment.amount_usd),
-        durationHours: payment.duration_hours
+        durationHours: payment.duration_hours,
+        zoneKey: payment.zone_key || 'nacional'
       });
 
       if (payment.user_id) {
@@ -438,7 +446,8 @@ export class PaymentService {
           category: payment.category,
           avatar: payment.avatar,
           amountPaid: Number(payment.amount_usd),
-          durationHours: payment.duration_hours
+          durationHours: payment.duration_hours,
+          zoneKey: payment.zone_key || 'nacional'
         });
 
         // Crear notificación para el usuario
@@ -601,13 +610,16 @@ export class PaymentService {
     slogan: string;
     category?: string;
     avatar?: string;
+    zoneKey?: string;
+    zone_key?: string;
   }) {
+    const zoneKey = (orderData.zoneKey || orderData.zone_key || 'nacional').toLowerCase();
     const duration = orderData.durationHours || 24;
     const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
     const orderId = `VENFI_PM_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
-    // Validar monto mínimo según puesto requerido
-    const expectedAmount = orderData.position === 1 ? 15.00 : (orderData.position <= 3 ? 10.00 : 5.00);
+    // Validar monto mínimo según zona y puesto requerido
+    const expectedAmount = await zonesService.getPriceForPosition(zoneKey, orderData.position);
     const finalAmountUsd = Math.max(orderData.amountUsd || expectedAmount, expectedAmount);
 
     // Obtener tasa BCV oficial
@@ -620,8 +632,8 @@ export class PaymentService {
       const res = await db.query(
         `INSERT INTO payments (
           id, user_id, amount_usd, position, duration_hours, status, payment_method, 
-          business_name, target_url, slogan, category, avatar, expires_at
-        ) VALUES ($1, $2, $3, $4, $5, 'pending', 'pago_movil', $6, $7, $8, $9, $10, $11)
+          business_name, target_url, slogan, category, avatar, expires_at, zone_key
+        ) VALUES ($1, $2, $3, $4, $5, 'pending', 'pago_movil', $6, $7, $8, $9, $10, $11, $12)
         RETURNING *`,
         [
           orderId,
@@ -634,7 +646,8 @@ export class PaymentService {
           orderData.slogan,
           orderData.category || 'General',
           orderData.avatar || '🚀',
-          expiresAt
+          expiresAt,
+          zoneKey
         ]
       );
       paymentRecord = res.rows[0];
@@ -657,7 +670,8 @@ export class PaymentService {
         category: orderData.category || 'General',
         avatar: orderData.avatar || '🚀',
         created_at: new Date().toISOString(),
-        expires_at: expiresAt.toISOString()
+        expires_at: expiresAt.toISOString(),
+        zone_key: zoneKey
       };
       store.payments.push(paymentRecord);
     }
@@ -848,7 +862,8 @@ export class PaymentService {
         category: payment.category,
         avatar: payment.avatar,
         amountPaid: Number(payment.amount_usd),
-        durationHours: payment.duration_hours
+        durationHours: payment.duration_hours,
+        zoneKey: payment.zone_key || 'nacional'
       });
 
       if (payment.user_id) {
@@ -884,7 +899,8 @@ export class PaymentService {
       category: payment.category,
       avatar: payment.avatar,
       amountPaid: Number(payment.amount_usd),
-      durationHours: payment.duration_hours
+      durationHours: payment.duration_hours,
+      zoneKey: payment.zone_key || 'nacional'
     });
 
     return {
