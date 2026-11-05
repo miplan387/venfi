@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   Flame, 
   TrendingUp, 
@@ -68,7 +69,7 @@ export const OilPriceCard = () => {
   const fetchOilPrices = async (manual = false) => {
     if (manual) setIsRefreshing(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/market/oil${manual ? '?forceRefresh=true' : ''}`);
+      const response = await fetch(apiUrl(`/api/market/oil${manual ? '?forceRefresh=true' : ''}`));
       if (response.ok) {
         const json = await response.json();
         if (json.success && json.data) {

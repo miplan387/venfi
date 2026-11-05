@@ -73,4 +73,13 @@ INSERT INTO zone_pricing (zone_key, position, tier, price_usd) VALUES
 ('valencia', 1, 'gold', 10.00), ('valencia', 2, 'silver', 6.00), ('valencia', 3, 'bronze', 4.00)
 ON CONFLICT (zone_key, position) DO NOTHING;
 
+-- Seed de Ajustes Dinámicos de Métodos de Pago
+INSERT INTO payment_settings (key, value) VALUES
+('pago_movil', '{"bank": "BNC", "phone": "0412-4160819", "idNumber": "V-11112387", "beneficiary": "Venfidata C.A."}'::jsonb),
+('zinli', '{"email": "miplan3d@gmail.com", "name": "Venfidata"}'::jsonb),
+('binance', '{"email": "pagos@venfidata.com", "merchantId": "284910482"}'::jsonb),
+('crypto', '{"wallet": "TU_DIRECCION_WALLET_AQUI", "network": "USDT (TRC20)"}'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from './config/api';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { NavTabs } from './components/NavTabs';
@@ -81,7 +82,7 @@ export function AppContent() {
   useEffect(() => {
     const fetchLiveRates = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/rates');
+        const response = await fetch(apiUrl('/api/rates'));
         if (response.ok) {
           const json = await response.json();
           if (json.success && json.data) {
@@ -119,7 +120,7 @@ export function AppContent() {
     }));
 
     // Enviar click tracking al backend
-    fetch(`http://localhost:5000/api/ranking/click/${position}`, {
+    fetch(apiUrl(`/api/ranking/click/${position}`), {
       method: 'POST'
     }).catch(err => console.warn('Click tracking local:', err));
   };

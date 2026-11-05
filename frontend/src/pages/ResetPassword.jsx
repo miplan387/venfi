@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   Lock, 
   KeyRound, 
@@ -58,7 +59,7 @@ export const ResetPassword = ({ onBackToPortal, onOpenLogin }) => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/reset-password', {
+      const res = await fetch(apiUrl('/api/auth/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword })

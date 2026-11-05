@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { apiUrl } from '../config/api';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -58,16 +59,7 @@ export const MiniTrendChart = ({
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        let res;
-        try {
-          res = await fetch(`/api/market/history/${commodityType}?days=${days}`);
-        } catch {
-          res = await fetch(`http://localhost:5000/api/market/history/${commodityType}?days=${days}`);
-        }
-
-        if (!res.ok) {
-          res = await fetch(`http://localhost:5000/api/market/history/${commodityType}?days=${days}`);
-        }
+        const res = await fetch(apiUrl(`/api/market/history/${commodityType}?days=${days}`));
 
         const json = await res.json();
         if (json.success && json.data && isMounted) {

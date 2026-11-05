@@ -29,6 +29,8 @@ export class PaymentService {
     paymentMethod?: string;
     zoneKey?: string;
     zone?: string;
+    txHash?: string;
+    referenceCode?: string;
   }) {
     const paymentMethod = data.paymentMethod || 'binance';
     const zoneKey = (data.zoneKey || data.zone || 'nacional').toLowerCase().trim();
@@ -36,6 +38,7 @@ export class PaymentService {
     const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
     const orderId = `VENFI_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     const zellePaymentId = randomUUID();
+    const txHash = data.txHash || data.referenceCode || null;
 
     // Validar precio mínimo según zona y posición requerida
     const expectedAmount = await zonesService.getPriceForPosition(zoneKey, data.position);
@@ -45,8 +48,8 @@ export class PaymentService {
 
     if (db.isPostgresActive) {
       const res = await db.query(
-        `INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at, zone_key)
-         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12, $13)
+        `INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at, zone_key, tx_hash)
+         VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           orderId,
@@ -61,7 +64,8 @@ export class PaymentService {
           data.category || 'General',
           data.avatar || '🚀',
           expiresAt,
-          zoneKey
+          zoneKey,
+          txHash
         ]
       );
       paymentRecord = res.rows[0];
@@ -84,7 +88,7 @@ export class PaymentService {
         duration_hours: duration,
         status: 'pending',
         payment_method: paymentMethod,
-        tx_hash: null,
+        tx_hash: txHash,
         business_name: data.businessName,
         target_url: data.targetUrl,
         slogan: data.slogan,
@@ -152,6 +156,31 @@ export class PaymentService {
           instructions: 'Envía el monto exacto vía Zinli al correo miplan3d@gmail.com. Luego reporta tu número de referencia.'
         },
         message: 'Datos de Zinli generados. Reporta tu comprobante para activación.'
+      };
+    } else if (paymentMethod === 'crypto') {
+      const { settingsService } = await import('./settingsService');
+      const cryptoSettings = await settingsService.getPaymentSettingByKey('crypto');
+      const wallet = cryptoSettings?.wallet || '0x71C83893F79328B5945864112e367800F8912387';
+      const network = cryptoSettings?.network || 'USDT (TRC-20 / BEP-20)';
+
+      return {
+        success: true,
+        paymentId: paymentRecord.id,
+        orderId,
+        amountUsd: finalAmount,
+        amountUsdt: finalAmount,
+        currency: 'USDT',
+        paymentMethod: 'crypto',
+        status: 'pending',
+        txHash: txHash,
+        cryptoInfo: {
+          wallet,
+          network,
+          amountUsdt: finalAmount,
+          txHash: txHash,
+          instructions: `Transfiere exactamente ${finalAmount} USDT (${network}) a la wallet: ${wallet}. Luego ingresa el hash (TXID) de la transacción.`
+        },
+        message: 'Orden en Criptomonedas (USDT) generada exitosamente. Estado pendiente de verificación.'
       };
     } else {
       return {

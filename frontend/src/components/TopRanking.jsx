@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { RankBadge } from './RankBadge';
 import { ZoneSelector } from './ZoneSelector';
+import { apiUrl } from '../config/api';
 
 // Función auxiliar para normalizar los campos de los slots
 const normalizeSlot = (s) => {
@@ -65,12 +66,7 @@ export const TopRanking = ({
     const fetchRanking = async () => {
       setLoading(true);
       try {
-        let res;
-        try {
-          res = await fetch(`/api/ranking?zone=${selectedZone}`);
-        } catch {
-          res = await fetch(`http://localhost:5000/api/ranking?zone=${selectedZone}`);
-        }
+        const res = await fetch(apiUrl(`/api/ranking?zone=${selectedZone}`));
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data) && isMounted) {

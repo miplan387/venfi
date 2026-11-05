@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   TrendingUp, 
   Clock, 
@@ -61,7 +62,7 @@ export const Header = ({
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/weather?city=${selectedCity}`);
+        const res = await fetch(apiUrl(`/api/weather?city=${selectedCity}`));
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {

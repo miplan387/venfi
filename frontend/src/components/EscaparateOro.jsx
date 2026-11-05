@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, ArrowRight, Sparkles } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export const EscaparateOro = ({ slots, selectedZone = 'nacional', onOpenAdvertise }) => {
   const [activeSlot, setActiveSlot] = useState(null);
@@ -9,13 +10,7 @@ export const EscaparateOro = ({ slots, selectedZone = 'nacional', onOpenAdvertis
 
     const fetchTopSlot = async () => {
       try {
-        let res;
-        try {
-          res = await fetch(`/api/ranking?zone=${selectedZone || 'nacional'}`);
-          if (!res.ok) throw new Error('Proxy error');
-        } catch {
-          res = await fetch(`http://localhost:5000/api/ranking?zone=${selectedZone || 'nacional'}`);
-        }
+        const res = await fetch(apiUrl(`/api/ranking?zone=${selectedZone || 'nacional'}`));
         if (res && res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data) && isMounted) {

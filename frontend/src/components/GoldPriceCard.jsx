@@ -12,6 +12,7 @@ import {
   Info
 } from 'lucide-react';
 import { MiniTrendChart } from './MiniTrendChart';
+import { apiUrl } from '../config/api';
 
 const GRAMS_PER_TROY_OUNCE = 31.1035;
 const GRAMS_PER_KILOGRAM = 1000;
@@ -74,16 +75,7 @@ export const GoldPriceCard = () => {
   const fetchData = async (manual = false) => {
     if (manual) setIsRefreshing(true);
     try {
-      let res;
-      try {
-        res = await fetch(`/api/market/gold${manual ? '?forceRefresh=true' : ''}`);
-      } catch {
-        res = await fetch(`http://localhost:5000/api/market/gold${manual ? '?forceRefresh=true' : ''}`);
-      }
-
-      if (!res.ok) {
-        res = await fetch(`http://localhost:5000/api/market/gold${manual ? '?forceRefresh=true' : ''}`);
-      }
+      const res = await fetch(apiUrl(`/api/market/gold${manual ? '?forceRefresh=true' : ''}`));
 
       const json = await res.json();
       if (json.success && json.data) {

@@ -58,8 +58,45 @@ const runTests = async () => {
             password: 'SuperPassword2026!'
         });
         assertTest('POST /api/auth/login -> Login y emisión de JWT', loginRes.status === 200 && !!loginRes.data.data.tokens.accessToken);
-        const accessToken = loginRes.data?.data?.tokens?.accessToken;
-        const refreshToken = loginRes.data?.data?.tokens?.refreshToken;
+        // 3b. Seguridad: Rechazo de credenciales inválidas (401 Unauthorized)
+        const badLoginRes = await client.post('/api/auth/login', {
+            email: testEmail,
+            password: 'WrongPassword123!'
+        });
+        assertTest('POST /api/auth/login [Credenciales inválidas] -> Rechazo con 401 Unauthorized', badLoginRes.status === 401);
+        // 3c. Recuperación de Contraseña: Solicitud de Token (POST /api/auth/forgot-password)
+        const forgotRes = await client.post('/api/auth/forgot-password', {
+            email: testEmail
+        });
+        const resetToken = forgotRes.data?.resetToken;
+        const resetUrl = forgotRes.data?.resetUrl;
+        assertTest('POST /api/auth/forgot-password -> Generación de token y URL de reseteo', forgotRes.status === 200 && !!resetToken && !!resetUrl && resetUrl.includes('/reset-password?token='));
+        // 3d. Recuperación de Contraseña: Restablecer con Token (POST /api/auth/reset-password)
+        const newPassword = 'NewSuperPassword2026*';
+        const resetRes = await client.post('/api/auth/reset-password', {
+            token: resetToken,
+            newPassword
+        });
+        assertTest('POST /api/auth/reset-password -> Cambio de contraseña con token válido', resetRes.status === 200 && resetRes.data.success === true);
+        // 3e. Login con nueva contraseña
+        const loginNewRes = await client.post('/api/auth/login', {
+            email: testEmail,
+            password: newPassword
+        });
+        assertTest('POST /api/auth/login [Nueva contraseña] -> Login exitoso tras recuperación', loginNewRes.status === 200 && !!loginNewRes.data.data.tokens.accessToken);
+        // 3f. Protección de Rutas Administrativas (/api/admin/cards)
+        const adminNoKeyRes = await client.get('/api/admin/cards');
+        assertTest('GET /api/admin/cards [Sin x-admin-key] -> 403 Forbidden', adminNoKeyRes.status === 403);
+        const adminBadKeyRes = await client.get('/api/admin/cards', {
+            headers: { 'x-admin-key': 'clave-falsa-123' }
+        });
+        assertTest('GET /api/admin/cards [Con clave errónea] -> 403 Forbidden', adminBadKeyRes.status === 403);
+        const adminValidKeyRes = await client.get('/api/admin/cards', {
+            headers: { 'x-admin-key': 'venfi-admin-2026' }
+        });
+        assertTest('GET /api/admin/cards [Con x-admin-key válida] -> 200 OK y acceso concedido', adminValidKeyRes.status === 200 && Array.isArray(adminValidKeyRes.data.data));
+        const accessToken = loginNewRes.data?.data?.tokens?.accessToken;
+        const refreshToken = loginNewRes.data?.data?.tokens?.refreshToken;
         // 4. Refresh Token
         const refreshRes = await client.post('/api/auth/refresh', { refreshToken });
         assertTest('POST /api/auth/refresh -> Renovación de tokens', refreshRes.status === 200 && !!refreshRes.data.data.accessToken);
@@ -75,9 +112,84 @@ const runTests = async () => {
         const zonesRes = await client.get('/api/zones');
         assertTest('GET /api/zones -> Lista de zonas geográficas segmentadas', zonesRes.status === 200 && zonesRes.data.data.length >= 4);
         const caracasPricingRes = await client.get('/api/zones/caracas/pricing');
-        assertTest('GET /api/zones/caracas/pricing -> Precios de zona Caracas', caracasPricingRes.status === 200 && caracasPricingRes.data.data.length >= 3);
+        const goldTier = caracasPricingRes.data?.data?.find((p) => p.position === 1);
+        const silverTier = caracasPricingRes.data?.data?.find((p) => p.position === 2);
+        const bronzeTier = caracasPricingRes.data?.data?.find((p) => p.position === 3);
+        const pricingValid = Number(goldTier?.price_usd) === 10 && Number(silverTier?.price_usd) === 6 && Number(bronzeTier?.price_usd) === 4;
+        assertTest('GET /api/zones/caracas/pricing -> Precios Caracas ($10 Oro, $6 Plata, $4 Bronce)', caracasPricingRes.status === 200 && pricingValid);
         const caracasRankingRes = await client.get('/api/ranking?zone=caracas');
         assertTest('GET /api/ranking?zone=caracas -> Consulta de ranking segmentado por zona', caracasRankingRes.status === 200 && caracasRankingRes.data.zone === 'caracas');
+        // 6c. Flujo End-to-End Pago Móvil en Zona Caracas
+        const pmCreateRes = await client.post('/api/payments/pagomovil/create', {
+            position: 1,
+            amountUsd: 10.00,
+            durationHours: 24,
+            businessName: 'Caracas Gourmet Burger 🍔',
+            targetUrl: 'https://caracasburger.com',
+            slogan: 'Las mejores hamburguesas de la Gran Caracas.',
+            category: 'Gastronomía & Restaurantes',
+            avatar: '🍔',
+            zoneKey: 'caracas'
+        }, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const pmOrderId = pmCreateRes.data?.data?.orderId || pmCreateRes.data?.data?.id;
+        const pmBankData = pmCreateRes.data?.data?.bankData;
+        assertTest('POST /api/payments/pagomovil/create -> Orden Pago Móvil en zona Caracas ($10)', pmCreateRes.status === 201 && !!pmOrderId && pmBankData?.bank?.includes('BNC'));
+        // 6d. Generación y Validación de String QR Estándar para Pago Móvil
+        const qrRes = await client.get(`/api/payments/pagomovil/qr/${pmOrderId}`);
+        const qrPayload = qrRes.data?.data?.qrPayload || '';
+        const qrImage = qrRes.data?.data?.qrImage || '';
+        const isStandardQr = qrPayload.startsWith('PAGOMOVIL|0191|04124160819|V11112387|') && qrImage.startsWith('data:image/png;base64,');
+        assertTest('GET /api/payments/pagomovil/qr/:id -> Formato estándar Pago Móvil (PAGOMOVIL|0191|Tel|CI|Monto|ID) y QR Base64', qrRes.status === 200 && isStandardQr);
+        // 6e. Envío de Comprobante Pago Móvil
+        const pmProofRes = await client.post('/api/payments/pagomovil/proof', {
+            orderId: pmOrderId,
+            referenceNumber: '0987654321',
+            proofImageUrl: 'https://cdn.venfi.app/proofs/caracas_burger_pm.jpg'
+        }, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        assertTest('POST /api/payments/pagomovil/proof -> Envío de comprobante de Pago Móvil', pmProofRes.status === 200 && pmProofRes.data.success === true);
+        // 6f. Aprobación Administrativa de Pago Móvil
+        const pmApproveRes = await client.post('/api/payments/pagomovil/approve', {
+            orderId: pmOrderId,
+            adminNotes: 'Pago verificado exitosamente en portal BNC Caracas'
+        }, {
+            headers: { 'x-admin-key': 'venfi-admin-2026' }
+        });
+        const isApproved = (pmApproveRes.data?.data?.status || pmApproveRes.data?.status) === 'completed';
+        assertTest('POST /api/payments/pagomovil/approve -> Aprobación administrativa y activación de tarjeta', pmApproveRes.status === 200 && isApproved);
+        // 6g. Validación de Colocación en el Ranking de Caracas (zone_key = 'caracas')
+        const caracasRankingUpdated = await client.get('/api/ranking?zone=caracas');
+        const firstCaracasAd = caracasRankingUpdated.data?.data?.find((s) => s.position === 1);
+        const bName = firstCaracasAd?.business_name || firstCaracasAd?.businessName;
+        const zKey = firstCaracasAd?.zone_key || firstCaracasAd?.zoneKey;
+        const placedCorrectly = bName === 'Caracas Gourmet Burger 🍔' && zKey === 'caracas';
+        assertTest('GET /api/ranking?zone=caracas -> Verificación de anuncio en puesto #1 de Caracas con zone_key', caracasRankingUpdated.status === 200 && placedCorrectly);
+        // 6h. Flujo Cripto (USDT): Creación, Cálculo de Monto y Hash de Transacción
+        const cryptoOrderRes = await client.post('/api/payments/create', {
+            position: 4,
+            amountUsd: 6.00,
+            durationHours: 24,
+            businessName: 'Caracas Crypto Hub 🪙',
+            targetUrl: 'https://caracascrypto.ve',
+            slogan: 'Exchange e inversiones cripto en Caracas.',
+            category: 'Fintech & Cripto',
+            avatar: '🪙',
+            paymentMethod: 'crypto',
+            zoneKey: 'caracas',
+            txHash: '0x9f8e7d6c5b4a3210fedcba9876543210fedcba98'
+        }, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const cryptoData = cryptoOrderRes.data?.data;
+        const isCryptoValid = cryptoOrderRes.status === 201 &&
+            cryptoData?.paymentMethod === 'crypto' &&
+            cryptoData?.amountUsdt === 6 &&
+            cryptoData?.status === 'pending' &&
+            cryptoData?.txHash === '0x9f8e7d6c5b4a3210fedcba9876543210fedcba98';
+        assertTest('POST /api/payments/create [Cripto USDT] -> Monto calculado, hash TXID registrado y estado pending', isCryptoValid);
         // 7. Click Tracking (POST /api/ranking/click/:position)
         const clickRes = await client.post('/api/ranking/click/1', { referrer: 'venfi-test-suite' });
         assertTest('POST /api/ranking/click/1 -> Registro de clic en el ranking', clickRes.status === 200 && clickRes.data.success === true);
@@ -209,6 +321,20 @@ const runTests = async () => {
         // 18. Swagger UI (GET /api-docs/)
         const swaggerRes = await client.get('/api-docs/');
         assertTest('GET /api-docs/ -> Documentación Swagger OpenAPI', swaggerRes.status === 200);
+        // 19. Consultar Configuración Dinámica de Pagos (GET /api/settings/payments)
+        const getSettingsRes = await client.get('/api/settings/payments');
+        assertTest('GET /api/settings/payments -> Configuración pública de métodos de pago', getSettingsRes.status === 200 && getSettingsRes.data.data.pago_movil !== undefined);
+        // 20. Actualizar Configuración de Pagos por Admin (PUT /api/settings/payments/pago_movil)
+        const updateSettingsRes = await client.put('/api/settings/payments/pago_movil', {
+            bank: 'BNC',
+            phone: '0412-4160819',
+            idNumber: 'V-11112387',
+            beneficiary: 'Venfidata C.A.',
+            isActive: true
+        }, {
+            headers: { 'x-admin-key': 'venfi-admin-2026' }
+        });
+        assertTest('PUT /api/settings/payments/:key -> Actualización administrativa de configuración de pagos', updateSettingsRes.status === 200 && updateSettingsRes.data.success === true);
         console.log('\n📊 ==============================================================');
         console.log(`📊 RESULTADO FINAL DE PRUEBAS: ${passedTests} de ${totalTests} APROBADAS (${Math.round((passedTests / totalTests) * 100)}%)`);
         console.log('📊 ==============================================================\n');

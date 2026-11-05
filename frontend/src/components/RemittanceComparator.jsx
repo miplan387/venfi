@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   Send, 
   CheckCircle2, 
@@ -46,7 +47,7 @@ export const RemittanceComparator = ({ providers: initialProviders }) => {
       const num = parseFloat(sendAmount) || 100;
       setIsLoading(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/remesas?amount=${num}&country=${selectedCountry}`);
+        const res = await fetch(apiUrl(`/api/remesas?amount=${num}&country=${selectedCountry}`));
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {

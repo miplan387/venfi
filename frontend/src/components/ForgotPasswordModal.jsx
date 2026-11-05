@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, KeyRound, ArrowLeft } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export const ForgotPasswordModal = ({ isOpen, onClose, onBackToLogin }) => {
   const [email, setEmail] = useState('');
@@ -22,7 +23,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onBackToLogin }) => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/forgot-password', {
+      const res = await fetch(apiUrl('/api/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })

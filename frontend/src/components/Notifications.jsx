@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, CheckCircle2, AlertTriangle, Sparkles, Flame, X } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export const Notifications = ({ isOpen, onClose }) => {
   const [notifications, setNotifications] = useState([]);
@@ -10,7 +11,7 @@ export const Notifications = ({ isOpen, onClose }) => {
 
     const fetchNotifications = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/user/notifications');
+        const res = await fetch(apiUrl('/api/user/notifications'));
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {

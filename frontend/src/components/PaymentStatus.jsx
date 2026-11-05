@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   Clock, 
   CheckCircle2, 
@@ -25,7 +26,7 @@ export const PaymentStatus = ({ orderId: initialOrderId, onStatusUpdate }) => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/payments/status/${id}`);
+      const res = await fetch(apiUrl(`/api/payments/status/${id}`));
       const json = await res.json();
       if (res.ok && json.success && json.data) {
         setPaymentData(json.data);

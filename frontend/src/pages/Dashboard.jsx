@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   TrendingUp, 
   MousePointerClick, 
@@ -74,11 +75,11 @@ export const Dashboard = ({ onBackToPortal, onOpenNotifications }) => {
       };
 
       const [sumRes, clicksRes, geoRes, campRes, payRes] = await Promise.all([
-        fetch('http://localhost:5000/api/user/dashboard', { headers: authHeaders }).then(r => r.json()),
-        fetch('http://localhost:5000/api/user/dashboard/clicks?days=7', { headers: authHeaders }).then(r => r.json()),
-        fetch('http://localhost:5000/api/user/dashboard/geolocation', { headers: authHeaders }).then(r => r.json()),
-        fetch('http://localhost:5000/api/user/dashboard/campaigns', { headers: authHeaders }).then(r => r.json()),
-        fetch('http://localhost:5000/api/user/dashboard/payments', { headers: authHeaders }).then(r => r.json())
+        fetch(apiUrl('/api/user/dashboard'), { headers: authHeaders }).then(r => r.json()),
+        fetch(apiUrl('/api/user/dashboard/clicks?days=7'), { headers: authHeaders }).then(r => r.json()),
+        fetch(apiUrl('/api/user/dashboard/geolocation'), { headers: authHeaders }).then(r => r.json()),
+        fetch(apiUrl('/api/user/dashboard/campaigns'), { headers: authHeaders }).then(r => r.json()),
+        fetch(apiUrl('/api/user/dashboard/payments'), { headers: authHeaders }).then(r => r.json())
       ]);
 
       if (sumRes.success && sumRes.data) setSummary(sumRes.data);
@@ -103,7 +104,7 @@ export const Dashboard = ({ onBackToPortal, onOpenNotifications }) => {
     setIsRenewing(true);
     try {
       const token = localStorage.getItem('venfi_access_token');
-      await fetch('http://localhost:5000/api/payments/renew', {
+      await fetch(apiUrl('/api/payments/renew'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -117,7 +118,7 @@ export const Dashboard = ({ onBackToPortal, onOpenNotifications }) => {
       });
 
       // Disparar Webhook para confirmación inmediata
-      await fetch('http://localhost:5000/api/payments/webhook', {
+      await fetch(apiUrl('/api/payments/webhook'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { apiUrl } from '../config/api';
 
 export const AdvertiseModal = ({ 
   isOpen, 
@@ -43,6 +44,14 @@ export const AdvertiseModal = ({
   const [paymentOrder, setPaymentOrder] = useState(null);
   const [pagoMovilData, setPagoMovilData] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+
+  // Configuración Dinámica de Métodos de Pago desde Admin
+  const [paymentSettings, setPaymentSettings] = useState({
+    pago_movil: { bank: 'BNC', phone: '0412-4160819', idNumber: 'V-11112387', beneficiary: 'Venfidata C.A.', isActive: true },
+    zinli: { email: 'miplan3d@gmail.com', name: 'Venfidata', isActive: true },
+    binance: { email: 'pagos@venfidata.com', merchantId: '284910482', isActive: true },
+    crypto: { wallet: 'TU_DIRECCION_WALLET_AQUI', network: 'USDT (TRC20)', isActive: true }
+  });
 
   // Estados para métodos de pago dinámicos
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -72,13 +81,7 @@ export const AdvertiseModal = ({
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       try {
-        let res;
-        try {
-          res = await fetch('/api/payment-methods/active');
-          if (!res.ok) throw new Error('Proxy returned ' + res.status);
-        } catch {
-          res = await fetch('http://localhost:5000/api/payment-methods/active');
-        }
+        const res = await fetch(apiUrl('/api/payment-methods/active'));
         const data = await res.json();
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           setPaymentMethods(data.data);
@@ -101,8 +104,23 @@ export const AdvertiseModal = ({
       }
     };
 
+    const fetchPaymentSettingsFromApi = async () => {
+      try {
+        const res = await fetch(apiUrl('/api/settings/payments'));
+        if (res && res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setPaymentSettings(prev => ({ ...prev, ...json.data }));
+          }
+        }
+      } catch (err) {
+        console.warn('Error al obtener configuraciones de pago dinámicas:', err);
+      }
+    };
+
     if (isOpen) {
       fetchPaymentMethods();
+      fetchPaymentSettingsFromApi();
     }
   }, [isOpen]);
 
@@ -138,41 +156,21 @@ export const AdvertiseModal = ({
 
       try {
         if (formData.paymentMethod === 'pago_movil') {
-          let res;
-          try {
-            res = await fetch('/api/payments/pagomovil/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                position: targetPosition,
-                amountUsd,
-                durationHours: 24,
-                businessName: formData.businessName,
-                targetUrl,
-                slogan: formData.slogan,
-                category: formData.category,
-                avatar: formData.avatar || '🚀',
-                zoneKey
-              })
-            });
-            if (!res.ok) throw new Error('Proxy error');
-          } catch {
-            res = await fetch('http://localhost:5000/api/payments/pagomovil/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                position: targetPosition,
-                amountUsd,
-                durationHours: 24,
-                businessName: formData.businessName,
-                targetUrl,
-                slogan: formData.slogan,
-                category: formData.category,
-                avatar: formData.avatar || '🚀',
-                zoneKey
-              })
-            });
-          }
+          const res = await fetch(apiUrl('/api/payments/pagomovil/create'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              position: targetPosition,
+              amountUsd,
+              durationHours: 24,
+              businessName: formData.businessName,
+              targetUrl,
+              slogan: formData.slogan,
+              category: formData.category,
+              avatar: formData.avatar || '🚀',
+              zoneKey
+            })
+          });
 
           if (res && res.ok) {
             const json = await res.json();
@@ -182,43 +180,22 @@ export const AdvertiseModal = ({
             }
           }
         } else {
-          let res;
-          try {
-            res = await fetch('/api/payments/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                position: targetPosition,
-                amountUsd,
-                durationHours: 24,
-                businessName: formData.businessName,
-                targetUrl,
-                slogan: formData.slogan,
-                category: formData.category,
-                avatar: formData.avatar || '🚀',
-                paymentMethod: formData.paymentMethod,
-                zoneKey
-              })
-            });
-            if (!res.ok) throw new Error('Proxy error');
-          } catch {
-            res = await fetch('http://localhost:5000/api/payments/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                position: targetPosition,
-                amountUsd,
-                durationHours: 24,
-                businessName: formData.businessName,
-                targetUrl,
-                slogan: formData.slogan,
-                category: formData.category,
-                avatar: formData.avatar || '🚀',
-                paymentMethod: formData.paymentMethod,
-                zoneKey
-              })
-            });
-          }
+          const res = await fetch(apiUrl('/api/payments/create'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              position: targetPosition,
+              amountUsd,
+              durationHours: 24,
+              businessName: formData.businessName,
+              targetUrl,
+              slogan: formData.slogan,
+              category: formData.category,
+              avatar: formData.avatar || '🚀',
+              paymentMethod: formData.paymentMethod,
+              zoneKey
+            })
+          });
 
           if (res && res.ok) {
             const json = await res.json();
@@ -247,13 +224,7 @@ export const AdvertiseModal = ({
       try {
         const orderId = paymentOrder?.orderId || paymentOrder?.paymentId;
         if (orderId) {
-          let res;
-          try {
-            res = await fetch(`/api/payments/pagomovil/qr/${orderId}`);
-            if (!res.ok) throw new Error('Proxy error');
-          } catch {
-            res = await fetch(`http://localhost:5000/api/payments/pagomovil/qr/${orderId}`);
-          }
+          const res = await fetch(apiUrl(`/api/payments/pagomovil/qr/${orderId}`));
           if (res && res.ok) {
             const json = await res.json();
             if (json.success && json.data) {
@@ -267,41 +238,21 @@ export const AdvertiseModal = ({
         const targetPosition = getTargetPosition(formData.selectedTier);
         const targetUrl = formData.url.startsWith('http') ? formData.url : `https://${formData.url}`;
         const zoneKey = selectedZone || 'nacional';
-        let createRes;
-        try {
-          createRes = await fetch('/api/payments/pagomovil/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              position: targetPosition,
-              amountUsd,
-              durationHours: 24,
-              businessName: formData.businessName,
-              targetUrl,
-              slogan: formData.slogan,
-              category: formData.category,
-              avatar: formData.avatar || '🚀',
-              zoneKey
-            })
-          });
-          if (!createRes.ok) throw new Error('Proxy error');
-        } catch {
-          createRes = await fetch('http://localhost:5000/api/payments/pagomovil/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              position: targetPosition,
-              amountUsd,
-              durationHours: 24,
-              businessName: formData.businessName,
-              targetUrl,
-              slogan: formData.slogan,
-              category: formData.category,
-              avatar: formData.avatar || '🚀',
-              zoneKey
-            })
-          });
-        }
+        const createRes = await fetch(apiUrl('/api/payments/pagomovil/create'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            position: targetPosition,
+            amountUsd,
+            durationHours: 24,
+            businessName: formData.businessName,
+            targetUrl,
+            slogan: formData.slogan,
+            category: formData.category,
+            avatar: formData.avatar || '🚀',
+            zoneKey
+          })
+        });
         if (createRes && createRes.ok) {
           const json = await createRes.json();
           if (json.success && json.data) {
@@ -329,13 +280,43 @@ export const AdvertiseModal = ({
           return;
         }
 
-        await fetch('http://localhost:5000/api/payments/pagomovil/proof', {
+        await fetch(apiUrl('/api/payments/pagomovil/proof'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId,
             referenceNumber: formData.referenceCode,
             proofImageUrl: formData.proofImageUrl || 'https://cdn.venfi.app/proofs/pm_receipt.jpg'
+          })
+        });
+
+        setIsSubmitting(false);
+        setStep('confirmation');
+        return;
+      } else if (formData.paymentMethod === 'crypto') {
+        if (!formData.referenceCode) {
+          alert('Por favor ingresa el Hash de la transacción (TXID) de tu pago en Criptomonedas.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const targetUrl = formData.url.startsWith('http') ? formData.url : `https://${formData.url}`;
+        const zoneKey = selectedZone || 'nacional';
+
+        await fetch(apiUrl('/api/payments/create'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            position: assignedPosition,
+            amountUsd,
+            durationHours: 24,
+            businessName: formData.businessName,
+            targetUrl,
+            slogan: formData.slogan,
+            category: formData.category,
+            avatar: formData.avatar || '🚀',
+            paymentMethod: 'crypto',
+            zoneKey
           })
         });
 
@@ -349,7 +330,7 @@ export const AdvertiseModal = ({
           return;
         }
 
-        await fetch('http://localhost:5000/api/payments/zelle/proof', {
+        await fetch(apiUrl('/api/payments/zelle/proof'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId, referenceCode: formData.referenceCode })
@@ -360,7 +341,7 @@ export const AdvertiseModal = ({
         return;
       } else {
         // Disparar Webhook de Binance Pay para verificación automática
-        await fetch('http://localhost:5000/api/payments/webhook', {
+        await fetch(apiUrl('/api/payments/webhook'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -847,8 +828,9 @@ export const AdvertiseModal = ({
               {(paymentMethods.length > 0 ? paymentMethods : [
                 { key: 'binance', name: 'Binance Pay', icon: '🟡' },
                 { key: 'zinli', name: 'Zinli (USD)', icon: '💳' },
-                { key: 'pago_movil', name: 'Pago Móvil (VES)', icon: '📱' }
-              ]).map((m) => {
+                { key: 'pago_movil', name: 'Pago Móvil (VES)', icon: '📱' },
+                { key: 'crypto', name: 'Criptomonedas', icon: '🪙' }
+              ]).filter(m => paymentSettings[m.key]?.isActive !== false).map((m) => {
                 const isSelected = formData.paymentMethod === m.key;
                 let activeColor = 'var(--color-primary)';
                 let bgActive = 'rgba(0, 245, 155, 0.15)';
@@ -858,6 +840,9 @@ export const AdvertiseModal = ({
                 } else if (m.key === 'zelle' || m.key === 'zinli') {
                   activeColor = 'var(--color-blue)';
                   bgActive = 'rgba(56, 189, 248, 0.15)';
+                } else if (m.key === 'crypto') {
+                  activeColor = 'var(--color-gold)';
+                  bgActive = 'rgba(251, 191, 36, 0.15)';
                 }
 
                 return (
@@ -897,7 +882,8 @@ export const AdvertiseModal = ({
               {(paymentMethods.length > 0 ? paymentMethods : [
                 { key: 'binance', name: 'Binance Pay (USDT)', icon: '🟡' },
                 { key: 'zinli', name: 'Zinli (USD)', icon: '💳' },
-                { key: 'pago_movil', name: 'Pago Móvil (VES)', icon: '📱' }
+                { key: 'pago_movil', name: 'Pago Móvil (VES)', icon: '📱' },
+                { key: 'crypto', name: 'Criptomonedas', icon: '🪙' }
               ]).map((m) => (
                 <option key={m.key} value={m.key}>
                   {m.icon} {m.name}
@@ -976,9 +962,11 @@ export const AdvertiseModal = ({
 
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>
                   Merchant ID: <strong style={{ color: '#ffffff' }}>284910482</strong> • Prepay: <span className="font-mono">{paymentOrder?.binancePay?.prepayId || 'BNC_LIVE'}</span>
+                  Merchant ID: <strong style={{ color: '#ffffff' }}>{paymentSettings.binance?.merchantId || '284910482'}</strong> • Cuenta: <span style={{ color: '#ffffff' }}>{paymentSettings.binance?.email || 'pagos@venfidata.com'}</span>
                 </div>
                 <div className="font-mono" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-gold)' }}>
                   Total a Pagar: {formData.selectedTier === 1 ? '15.00' : formData.selectedTier === 2 ? '10.00' : '5.00'} USDT
+                  Total a Pagar: {getTierPrice(formData.selectedTier).toFixed(2)} USDT
                 </div>
               </div>
             )}
@@ -1011,9 +999,11 @@ export const AdvertiseModal = ({
                 <div style={{ background: 'rgba(255,255,255,0.04)', padding: '0.85rem', borderRadius: '10px', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                     <span>Correo {formData.paymentMethod === 'zinli' ? 'Zinli' : 'Zelle'}: <strong style={{ color: '#ffffff' }}>{methodConfig?.fields?.email || (formData.paymentMethod === 'zinli' ? 'miplan3d@gmail.com' : 'pagos@venfi.app')}</strong></span>
+                    <span>Correo {formData.paymentMethod === 'zinli' ? 'Zinli' : 'Zelle'}: <strong style={{ color: '#ffffff' }}>{paymentSettings.zinli?.email || methodConfig?.fields?.email || 'miplan3d@gmail.com'}</strong></span>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(methodConfig?.fields?.email || (formData.paymentMethod === 'zinli' ? 'miplan3d@gmail.com' : 'pagos@venfi.app'), 'zinli_email')}
+                      onClick={() => copyToClipboard(paymentSettings.zinli?.email || methodConfig?.fields?.email || 'miplan3d@gmail.com', 'zinli_email')}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       title="Copiar correo"
                     >
@@ -1022,9 +1012,11 @@ export const AdvertiseModal = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: '0.4rem' }}>
                     <span>Titular: <strong style={{ color: '#ffffff' }}>{methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata Publicidad' : 'Venfidata Media LLC')}</strong></span>
+                    <span>Titular: <strong style={{ color: '#ffffff' }}>{paymentSettings.zinli?.name || methodConfig?.fields?.name || 'Venfidata'}</strong></span>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata Publicidad' : 'Venfidata Media LLC'), 'zinli_name')}
+                      onClick={() => copyToClipboard(paymentSettings.zinli?.name || methodConfig?.fields?.name || 'Venfidata', 'zinli_name')}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       title="Copiar titular"
                     >
@@ -1046,6 +1038,7 @@ export const AdvertiseModal = ({
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Monto a Transferir:</span>
                   <span className="font-mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-gold)' }}>
                     ${formData.selectedTier === 1 ? '15.00' : formData.selectedTier === 2 ? '10.00' : '5.00'} USD
+                    ${getTierPrice(formData.selectedTier).toFixed(2)} USD
                   </span>
                 </div>
 
@@ -1144,6 +1137,7 @@ export const AdvertiseModal = ({
                     )}
                     <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#0f172a', marginTop: '0.25rem' }}>
                       BNC • QR DINÁMICO
+                      {paymentSettings.pago_movil?.bank || 'BNC'} • QR DINÁMICO
                     </span>
                   </div>
 
@@ -1165,12 +1159,15 @@ export const AdvertiseModal = ({
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Banco:</span>
                         <strong style={{ color: '#ffffff' }}>0191 - BNC</strong>
+                        <strong style={{ color: '#ffffff' }}>{paymentSettings.pago_movil?.bank || '0191 - BNC'}</strong>
                       </div>
                       <button
                         type="button"
                         onClick={() => copyToClipboard('0191', 'bank')}
+                        onClick={() => copyToClipboard(paymentSettings.pago_movil?.bank || '0191', 'bank')}
                         style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                         title="Copiar código de banco"
+                        title="Copiar banco"
                       >
                         {copiedField === 'bank' ? <Check size={14} color="var(--color-primary)" /> : <Copy size={14} />}
                       </button>
@@ -1188,10 +1185,12 @@ export const AdvertiseModal = ({
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Teléfono:</span>
                         <strong style={{ color: '#ffffff' }}>0412-4160819</strong>
+                        <strong style={{ color: '#ffffff' }}>{paymentSettings.pago_movil?.phone || '0412-4160819'}</strong>
                       </div>
                       <button
                         type="button"
                         onClick={() => copyToClipboard('04124160819', 'phone')}
+                        onClick={() => copyToClipboard((paymentSettings.pago_movil?.phone || '04124160819').replace(/[^0-9]/g, ''), 'phone')}
                         style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                         title="Copiar teléfono"
                       >
@@ -1211,14 +1210,39 @@ export const AdvertiseModal = ({
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Cédula / RIF:</span>
                         <strong style={{ color: '#ffffff' }}>V-11112387</strong>
+                        <strong style={{ color: '#ffffff' }}>{paymentSettings.pago_movil?.idNumber || 'V-11112387'}</strong>
                       </div>
                       <button
                         type="button"
                         onClick={() => copyToClipboard('11112387', 'id')}
+                        onClick={() => copyToClipboard((paymentSettings.pago_movil?.idNumber || '11112387').replace(/[^a-zA-Z0-9]/g, ''), 'id')}
                         style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                         title="Copiar cédula"
                       >
                         {copiedField === 'id' ? <Check size={14} color="var(--color-primary)" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      padding: '0.55rem 0.75rem',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.8rem'
+                    }}>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>Titular:</span>
+                        <strong style={{ color: '#ffffff' }}>{paymentSettings.pago_movil?.beneficiary || 'Venfidata C.A.'}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(paymentSettings.pago_movil?.beneficiary || 'Venfidata C.A.', 'beneficiary')}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        title="Copiar titular"
+                      >
+                        {copiedField === 'beneficiary' ? <Check size={14} color="var(--color-primary)" /> : <Copy size={14} />}
                       </button>
                     </div>
                   </div>
@@ -1301,8 +1325,105 @@ export const AdvertiseModal = ({
               </div>
             )}
 
+            {/* Contenido Criptomonedas (USDT/Cripto) */}
+            {formData.paymentMethod === 'crypto' && (
+              <div style={{
+                background: 'rgba(6, 10, 18, 0.85)',
+                padding: '1.25rem',
+                borderRadius: '16px',
+                border: '1.5px solid var(--color-gold)',
+                boxShadow: '0 8px 30px rgba(251, 191, 36, 0.1)',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.85rem' }}>
+                  <span style={{ fontSize: '1.75rem' }}>🪙</span>
+                  <div>
+                    <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                      Pago en Criptomonedas (USDT)
+                    </h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.15rem 0 0 0' }}>
+                      Transfiere USDT directamente a nuestra dirección de billetera oficial:
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '0.85rem', borderRadius: '10px', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', display: 'block' }}>Red Blockchain (Network):</span>
+                      <strong style={{ color: 'var(--color-gold)' }}>{paymentSettings.crypto?.network || 'USDT (TRC20)'}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(paymentSettings.crypto?.network || 'USDT (TRC20)', 'crypto_network')}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                      title="Copiar red"
+                    >
+                      {copiedField === 'crypto_network' ? <Check size={14} color="var(--color-primary)" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: '0.6rem' }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden', paddingRight: '0.5rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', display: 'block' }}>Dirección de Wallet:</span>
+                      <strong className="font-mono" style={{ color: '#ffffff', wordBreak: 'break-all', fontSize: '0.82rem' }}>
+                        {paymentSettings.crypto?.wallet || 'TU_DIRECCION_WALLET_AQUI'}
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(paymentSettings.crypto?.wallet || 'TU_DIRECCION_WALLET_AQUI', 'crypto_wallet')}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0 }}
+                      title="Copiar dirección"
+                    >
+                      {copiedField === 'crypto_wallet' ? <Check size={14} color="var(--color-primary)" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Resumen del Monto a Pagar */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Monto Exacto a Transferir:</span>
+                  <span className="font-mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-gold)' }}>
+                    ${getTierPrice(formData.selectedTier).toFixed(2)} USDT
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>
+                    Hash de la Transacción (TXID)*:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 0x7b8c... o TXID de la transferencia"
+                    value={formData.referenceCode}
+                    onChange={(e) => setFormData({ ...formData, referenceCode: e.target.value })}
+                    required
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.85rem',
+                      color: '#ffffff',
+                      fontFamily: 'monospace',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Contenido Dinámico para Nuevos Métodos de Pago (Apolo Pay, PayPal, etc.) */}
-            {!['binance', 'zelle', 'zinli', 'pago_movil'].includes(formData.paymentMethod) && (
+            {!['binance', 'zelle', 'zinli', 'pago_movil', 'crypto'].includes(formData.paymentMethod) && (
               <div style={{
                 background: 'rgba(6, 10, 18, 0.85)',
                 padding: '1.25rem',

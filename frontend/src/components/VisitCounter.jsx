@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Eye, Activity } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export const VisitCounter = () => {
   const [stats, setStats] = useState({
@@ -20,11 +21,9 @@ export const VisitCounter = () => {
 
     const syncVisits = async () => {
       try {
-        const apiUrl = window.location.port ? '/api/visits' : 'http://localhost:5000/api/visits';
-
         if (!hasTrackedSession) {
           // Registrar visita única por sesión
-          const res = await fetch(`${apiUrl}/track`, {
+          const res = await fetch(apiUrl('/api/visits/track'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -48,7 +47,7 @@ export const VisitCounter = () => {
         }
 
         // Consultar estadísticas normales
-        const res = await fetch(apiUrl, {
+        const res = await fetch(apiUrl('/api/visits'), {
           headers: {
             'x-visitor-id': visitorId
           }

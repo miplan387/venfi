@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   X, 
   TrendingUp, 
@@ -91,7 +92,7 @@ export const RateTrendModal = ({ isOpen, onClose, rateKey = 'bcv', item = {} }) 
       try {
         setLoading(true);
         const queryType = rateKey === 'euroBcv' ? 'euro' : (rateKey === 'usdtBinance' ? 'usdt' : rateKey);
-        const res = await fetch(`http://localhost:5000/api/rates/history/${queryType}?days=${days}`);
+        const res = await fetch(apiUrl(`/api/rates/history/${queryType}?days=${days}`));
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) {

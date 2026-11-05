@@ -12,7 +12,9 @@ export const createPaymentSchema = z.object({
     avatar: z.string().default('🚀'),
     paymentMethod: z.string().default('binance'),
     zoneKey: z.string().optional().default('nacional'),
-    zone: z.string().optional()
+    zone: z.string().optional(),
+    txHash: z.string().optional(),
+    referenceCode: z.string().optional()
   })
 });
 

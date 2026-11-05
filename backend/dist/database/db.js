@@ -23,6 +23,12 @@ class DatabaseManager {
         commodity_history: [],
         zones: [],
         zone_pricing: [],
+        payment_settings: [
+            { key: 'pago_movil', value: { bank: 'BNC', phone: '0412-4160819', idNumber: 'V-11112387', beneficiary: 'Venfidata C.A.' }, updated_at: new Date().toISOString() },
+            { key: 'zinli', value: { email: 'miplan3d@gmail.com', name: 'Venfidata' }, updated_at: new Date().toISOString() },
+            { key: 'binance', value: { email: 'pagos@venfidata.com', merchantId: '284910482' }, updated_at: new Date().toISOString() },
+            { key: 'crypto', value: { wallet: 'TU_DIRECCION_WALLET_AQUI', network: 'USDT (TRC20)' }, updated_at: new Date().toISOString() }
+        ],
         payment_methods: [
             { id: 1, key: 'binance', name: 'Binance Pay (USDT)', icon: '🟡', description: 'Pago instantáneo con criptomonedas y confirmación automática por Webhook.', fields: { merchantId: '284910482', currency: 'USDT' }, is_active: true, requires_approval: false, sort_order: 1 },
             { id: 2, key: 'zinli', name: 'Zinli (USD)', icon: '💳', description: 'Pago con Zinli, billetera digital en dólares con acreditación inmediata.', fields: { email: 'miplan3d@gmail.com', name: 'Venfidata Publicidad' }, is_active: true, requires_approval: true, sort_order: 2 },
@@ -300,6 +306,20 @@ class DatabaseManager {
           ALTER TABLE payments ADD COLUMN IF NOT EXISTS zone_key VARCHAR(50) DEFAULT 'nacional';
           CREATE INDEX IF NOT EXISTS idx_payments_zone ON payments(zone_key);
           UPDATE payments SET zone_key = 'nacional' WHERE zone_key IS NULL;
+
+          -- Tabla de configuración dinámica de pagos
+          CREATE TABLE IF NOT EXISTS payment_settings (
+            key VARCHAR(50) PRIMARY KEY,
+            value JSONB NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+          );
+
+          INSERT INTO payment_settings (key, value) VALUES
+          ('pago_movil', '{"bank": "BNC", "phone": "0412-4160819", "idNumber": "V-11112387", "beneficiary": "Venfidata C.A."}'::jsonb),
+          ('zinli', '{"email": "miplan3d@gmail.com", "name": "Venfidata"}'::jsonb),
+          ('binance', '{"email": "pagos@venfidata.com", "merchantId": "284910482"}'::jsonb),
+          ('crypto', '{"wallet": "TU_DIRECCION_WALLET_AQUI", "network": "USDT (TRC20)"}'::jsonb)
+          ON CONFLICT (key) DO NOTHING;
         `);
                 // Ejecutar seed inicial si ranking está vacío
                 const rankingCountRes = await client.query('SELECT COUNT(*) FROM ranking');
@@ -578,6 +598,13 @@ class DatabaseManager {
             { id: 17, zone_key: 'valencia', position: 1, tier: 'gold', price_usd: 10.00, duration_hours: 24, is_active: true },
             { id: 18, zone_key: 'valencia', position: 2, tier: 'silver', price_usd: 6.00, duration_hours: 24, is_active: true },
             { id: 19, zone_key: 'valencia', position: 3, tier: 'bronze', price_usd: 4.00, duration_hours: 24, is_active: true }
+        ];
+        // Ajustes iniciales de recepción de pagos
+        this.inMemoryDb.payment_settings = [
+            { key: 'pago_movil', value: { bank: 'BNC', phone: '0412-4160819', idNumber: 'V-11112387', beneficiary: 'Venfidata C.A.' }, updated_at: new Date().toISOString() },
+            { key: 'zinli', value: { email: 'miplan3d@gmail.com', name: 'Venfidata' }, updated_at: new Date().toISOString() },
+            { key: 'binance', value: { email: 'pagos@venfidata.com', merchantId: '284910482' }, updated_at: new Date().toISOString() },
+            { key: 'crypto', value: { wallet: 'TU_DIRECCION_WALLET_AQUI', network: 'USDT (TRC20)' }, updated_at: new Date().toISOString() }
         ];
     }
     // Getters para acceso a la base de datos

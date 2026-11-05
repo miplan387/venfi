@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Globe, Building2 } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 const defaultZones = [
   { key: 'nacional', name: 'Nacional', icon: '🇻🇪', type: 'national' },
@@ -16,12 +17,7 @@ export const ZoneSelector = ({ selectedZone = 'nacional', onZoneChange }) => {
     const fetchZones = async () => {
       try {
         setLoading(true);
-        let res;
-        try {
-          res = await fetch('/api/zones');
-        } catch {
-          res = await fetch('http://localhost:5000/api/zones');
-        }
+        const res = await fetch(apiUrl('/api/zones'));
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data) && json.data.length > 0) {

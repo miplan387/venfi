@@ -227,5 +227,13 @@ CREATE INDEX IF NOT EXISTS idx_ranking_zone ON ranking(zone_key, position);
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS zone_key VARCHAR(50) DEFAULT 'nacional';
 CREATE INDEX IF NOT EXISTS idx_payments_zone ON payments(zone_key);
 
+-- 13. TABLA: payment_settings (Configuración Dinámica de Métodos de Recepción de Pago)
+CREATE TABLE IF NOT EXISTS payment_settings (
+  key VARCHAR(50) PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
 
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { 
   ArrowLeft, 
   ShieldCheck, 
@@ -107,6 +108,35 @@ export const AdminCards = ({ onBackToPortal }) => {
   });
   const [isSavingProvider, setIsSavingProvider] = useState(false);
 
+  // Configuración Dinámica de Métodos de Pago
+  const [paymentSettings, setPaymentSettings] = useState({
+    pago_movil: {
+      bank: 'BNC',
+      phone: '0412-4160819',
+      idNumber: 'V-11112387',
+      beneficiary: 'Venfidata C.A.',
+      isActive: true
+    },
+    zinli: {
+      email: 'miplan3d@gmail.com',
+      name: 'Venfidata',
+      isActive: true
+    },
+    binance: {
+      email: 'pagos@venfidata.com',
+      merchantId: '284910482',
+      isActive: true
+    },
+    crypto: {
+      wallet: 'TU_DIRECCION_WALLET_AQUI',
+      network: 'USDT (TRC20)',
+      isActive: true
+    }
+  });
+  const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(false);
+  const [savingPaymentSettingKey, setSavingPaymentSettingKey] = useState(null);
+  const [savedSuccessKey, setSavedSuccessKey] = useState(null);
+
   // Modal de Edición
   const [editingCard, setEditingCard] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -123,7 +153,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   const fetchCards = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5000/api/admin/cards', {
+      const res = await fetch(apiUrl('/api/admin/cards'), {
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
       if (res.ok) {
@@ -143,7 +173,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   const fetchPendingPayments = async () => {
     try {
       setLoadingPending(true);
-      const res = await fetch('http://localhost:5000/api/payments/pagomovil/pending', {
+      const res = await fetch(apiUrl('/api/payments/pagomovil/pending'), {
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
       if (res.ok) {
@@ -162,7 +192,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   // Cargar configuración bancaria del receptor
   const fetchBankConfig = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/payments/pagomovil/config');
+      const res = await fetch(apiUrl('/api/payments/pagomovil/config'));
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
@@ -174,12 +204,77 @@ export const AdminCards = ({ onBackToPortal }) => {
     }
   };
 
+  const fetchPaymentSettings = async () => {
+    try {
+      setLoadingPaymentSettings(true);
+      const res = await fetch(apiUrl('/api/settings/payments'));
+      if (res && res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setPaymentSettings(prev => ({
+            ...prev,
+            ...json.data
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar ajustes de pagos:', err);
+    } finally {
+      setLoadingPaymentSettings(false);
+    }
+  };
+
+  const handleSavePaymentSetting = async (key) => {
+    try {
+      setSavingPaymentSettingKey(key);
+      const payload = paymentSettings[key] || {};
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-admin-key': 'venfi-admin-2026'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(apiUrl(`/api/settings/payments/${key}`), {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (res && res.ok) {
+        setSavedSuccessKey(key);
+        showNotification(`Configuración de ${key.toUpperCase().replace('_', ' ')} guardada exitosamente.`);
+        setTimeout(() => setSavedSuccessKey(null), 3500);
+
+        // Si se actualizó pago_movil, actualizar también el estado de bankConfig
+        if (key === 'pago_movil') {
+          setBankConfig(prev => ({
+            ...prev,
+            bank: payload.bank || prev.bank,
+            phone: payload.phone || prev.phone,
+            idNumber: payload.idNumber || prev.idNumber,
+            beneficiaryName: payload.beneficiary || payload.beneficiaryName || prev.beneficiaryName
+          }));
+        }
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        showNotification(errJson.message || 'Error al guardar configuración', 'error');
+      }
+    } catch (err) {
+      console.error('Error al guardar configuración de pago:', err);
+      showNotification('Error de conexión al guardar configuración', 'error');
+    } finally {
+      setSavingPaymentSettingKey(null);
+    }
+  };
+
   useEffect(() => {
     fetchCards();
     fetchPendingPayments();
     fetchBankConfig();
     fetchAllPaymentMethods();
     fetchAllRemittanceProviders();
+    fetchPaymentSettings();
   }, []);
 
   const copyToClipboard = (text, fieldName) => {
@@ -194,7 +289,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     if (!confirmApprove) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/payments/pagomovil/approve', {
+      const res = await fetch(apiUrl('/api/payments/pagomovil/approve'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,7 +313,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   const handleRejectPayment = async () => {
     if (!rejectingPayment) return;
     try {
-      const res = await fetch('http://localhost:5000/api/payments/pagomovil/reject', {
+      const res = await fetch(apiUrl('/api/payments/pagomovil/reject'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +342,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     if (e) e.preventDefault();
     try {
       setIsSavingBankConfig(true);
-      const res = await fetch('http://localhost:5000/api/payments/pagomovil/config', {
+      const res = await fetch(apiUrl('/api/payments/pagomovil/config'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -282,7 +377,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   const fetchAllPaymentMethods = async () => {
     try {
       setLoadingMethods(true);
-      const res = await fetch('http://localhost:5000/api/payment-methods', {
+      const res = await fetch(apiUrl('/api/payment-methods'), {
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
       if (res.ok) {
@@ -301,7 +396,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   // Alternar estado activo / inactivo de un método de pago
   const handleToggleMethodActive = async (method) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/payment-methods/${method.key}/toggle`, {
+      const res = await fetch(apiUrl(`/api/payment-methods/${method.key}/toggle`), {
         method: 'PATCH',
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
@@ -388,7 +483,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     setIsSavingMethod(true);
     try {
       if (editingMethodKey) {
-        const res = await fetch(`http://localhost:5000/api/payment-methods/${editingMethodKey}`, {
+        const res = await fetch(apiUrl(`/api/payment-methods/${editingMethodKey}`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -412,7 +507,7 @@ export const AdminCards = ({ onBackToPortal }) => {
           return;
         }
         const createPayload = { ...payload, key };
-        const res = await fetch('http://localhost:5000/api/payment-methods', {
+        const res = await fetch(apiUrl('/api/payment-methods'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -451,7 +546,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/payment-methods/${method.key}`, {
+      const res = await fetch(apiUrl(`/api/payment-methods/${method.key}`), {
         method: 'DELETE',
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
@@ -475,7 +570,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   const fetchAllRemittanceProviders = async () => {
     try {
       setLoadingProviders(true);
-      const res = await fetch('http://localhost:5000/api/remesas/providers', {
+      const res = await fetch(apiUrl('/api/remesas/providers'), {
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
       if (res.ok) {
@@ -494,7 +589,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   // Alternar estado activo / inactivo de un proveedor
   const handleToggleProviderActive = async (prov) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/remesas/providers/${prov.key}/toggle`, {
+      const res = await fetch(apiUrl(`/api/remesas/providers/${prov.key}/toggle`), {
         method: 'PATCH',
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
@@ -618,7 +713,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     setIsSavingProvider(true);
     try {
       if (editingProviderKey) {
-        const res = await fetch(`http://localhost:5000/api/remesas/providers/${editingProviderKey}`, {
+        const res = await fetch(apiUrl(`/api/remesas/providers/${editingProviderKey}`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -642,7 +737,7 @@ export const AdminCards = ({ onBackToPortal }) => {
           return;
         }
         const createPayload = { ...payload, key };
-        const res = await fetch('http://localhost:5000/api/remesas/providers', {
+        const res = await fetch(apiUrl('/api/remesas/providers'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -681,7 +776,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/remesas/providers/${prov.key}`, {
+      const res = await fetch(apiUrl(`/api/remesas/providers/${prov.key}`), {
         method: 'DELETE',
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
@@ -700,7 +795,7 @@ export const AdminCards = ({ onBackToPortal }) => {
   // Alternar estado activo / inactivo
   const handleToggleStatus = async (cardId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/cards/${cardId}/toggle`, {
+      const res = await fetch(apiUrl(`/api/admin/cards/${cardId}/toggle`), {
         method: 'PATCH',
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
@@ -736,7 +831,7 @@ export const AdminCards = ({ onBackToPortal }) => {
 
     try {
       setIsSaving(true);
-      const res = await fetch(`http://localhost:5000/api/admin/cards/${editingCard.id}`, {
+      const res = await fetch(apiUrl(`/api/admin/cards/${editingCard.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -765,7 +860,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     if (!renewingCard) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/cards/${renewingCard.id}/renew`, {
+      const res = await fetch(apiUrl(`/api/admin/cards/${renewingCard.id}/renew`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -790,7 +885,7 @@ export const AdminCards = ({ onBackToPortal }) => {
     if (!confirm) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/cards/${card.id}`, {
+      const res = await fetch(apiUrl(`/api/admin/cards/${card.id}`), {
         method: 'DELETE',
         headers: { 'x-admin-key': 'venfi-admin-2026' }
       });
@@ -1051,6 +1146,28 @@ export const AdminCards = ({ onBackToPortal }) => {
           >
             <Settings size={16} />
             <span>Configuración Bancaria (Receptor)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('payment_settings')}
+            style={{
+              background: activeTab === 'payment_settings' ? 'rgba(0, 245, 155, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              border: activeTab === 'payment_settings' ? '1.5px solid var(--color-primary)' : '1px solid var(--border-subtle)',
+              color: activeTab === 'payment_settings' ? 'var(--color-primary)' : 'var(--text-secondary)',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              fontWeight: 800,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Settings size={16} />
+            <span>⚙️ Configuración de Pagos</span>
           </button>
         </div>
 
@@ -2588,6 +2705,386 @@ export const AdminCards = ({ onBackToPortal }) => {
                   </code>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            PESTAÑA: CONFIGURACIÓN DINÁMICA DE PAGOS
+           ========================================================================= */}
+        {activeTab === 'payment_settings' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span>⚙️ Configuración Dinámica de Pagos</span>
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0 0' }}>
+                  Gestiona las cuentas de recepción de fondos y el estado de disponibilidad en tiempo real para todos los clientes.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchPaymentSettings}
+                className="btn btn-secondary"
+                style={{ padding: '0.55rem 1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem' }}
+              >
+                <RefreshCw size={15} className={loadingPaymentSettings ? 'animate-spin' : ''} />
+                <span>Refrescar Datos</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+              
+              {/* 1. PAGO MÓVIL (VES) */}
+              <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>📱</span>
+                    <div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>Pago Móvil (VES)</h4>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Bolívares a Tasa Oficial BCV</span>
+                    </div>
+                  </div>
+                  {/* Switch Activo / Inactivo */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: paymentSettings.pago_movil?.isActive !== false ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                      {paymentSettings.pago_movil?.isActive !== false ? 'ACTIVO' : 'PAUSADO'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={paymentSettings.pago_movil?.isActive !== false}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        pago_movil: { ...paymentSettings.pago_movil, isActive: e.target.checked }
+                      })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Banco Receptor:
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentSettings.pago_movil?.bank || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        pago_movil: { ...paymentSettings.pago_movil, bank: e.target.value }
+                      })}
+                      placeholder="Ej: BNC (Banco Nacional de Crédito)"
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                        Teléfono:
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentSettings.pago_movil?.phone || ''}
+                        onChange={(e) => setPaymentSettings({
+                          ...paymentSettings,
+                          pago_movil: { ...paymentSettings.pago_movil, phone: e.target.value }
+                        })}
+                        placeholder="Ej: 0412-4160819"
+                        style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem', fontFamily: 'monospace' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                        Cédula / RIF:
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentSettings.pago_movil?.idNumber || ''}
+                        onChange={(e) => setPaymentSettings({
+                          ...paymentSettings,
+                          pago_movil: { ...paymentSettings.pago_movil, idNumber: e.target.value }
+                        })}
+                        placeholder="Ej: V-11112387"
+                        style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem', fontFamily: 'monospace' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Titular de la Cuenta:
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentSettings.pago_movil?.beneficiary || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        pago_movil: { ...paymentSettings.pago_movil, beneficiary: e.target.value }
+                      })}
+                      placeholder="Ej: Venfidata C.A."
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSavePaymentSetting('pago_movil')}
+                    disabled={savingPaymentSettingKey === 'pago_movil'}
+                    className="btn btn-primary"
+                    style={{ marginTop: '0.5rem', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}
+                  >
+                    {savingPaymentSettingKey === 'pago_movil' ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : savedSuccessKey === 'pago_movil' ? (
+                      <Check size={16} color="#059669" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>{savedSuccessKey === 'pago_movil' ? '¡Cambios Guardados!' : 'Guardar Cambios Pago Móvil'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. ZINLI (USD) */}
+              <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>💳</span>
+                    <div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>Zinli (USD)</h4>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Billetera Digital en Dólares</span>
+                    </div>
+                  </div>
+                  {/* Switch Activo / Inactivo */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: paymentSettings.zinli?.isActive !== false ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                      {paymentSettings.zinli?.isActive !== false ? 'ACTIVO' : 'PAUSADO'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={paymentSettings.zinli?.isActive !== false}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        zinli: { ...paymentSettings.zinli, isActive: e.target.checked }
+                      })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Correo Electrónico Zinli:
+                    </label>
+                    <input
+                      type="email"
+                      value={paymentSettings.zinli?.email || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        zinli: { ...paymentSettings.zinli, email: e.target.value }
+                      })}
+                      placeholder="Ej: pagos@venfidata.com"
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Nombre del Titular:
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentSettings.zinli?.name || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        zinli: { ...paymentSettings.zinli, name: e.target.value }
+                      })}
+                      placeholder="Ej: Venfidata"
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSavePaymentSetting('zinli')}
+                    disabled={savingPaymentSettingKey === 'zinli'}
+                    className="btn btn-primary"
+                    style={{ marginTop: 'auto', paddingTop: '0.75rem', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}
+                  >
+                    {savingPaymentSettingKey === 'zinli' ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : savedSuccessKey === 'zinli' ? (
+                      <Check size={16} color="#059669" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>{savedSuccessKey === 'zinli' ? '¡Cambios Guardados!' : 'Guardar Cambios Zinli'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. BINANCE PAY */}
+              <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>🟡</span>
+                    <div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>Binance Pay</h4>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Confirmación Inmediata Webhook</span>
+                    </div>
+                  </div>
+                  {/* Switch Activo / Inactivo */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: paymentSettings.binance?.isActive !== false ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                      {paymentSettings.binance?.isActive !== false ? 'ACTIVO' : 'PAUSADO'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={paymentSettings.binance?.isActive !== false}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        binance: { ...paymentSettings.binance, isActive: e.target.checked }
+                      })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Correo de Cuenta Binance:
+                    </label>
+                    <input
+                      type="email"
+                      value={paymentSettings.binance?.email || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        binance: { ...paymentSettings.binance, email: e.target.value }
+                      })}
+                      placeholder="Ej: pagos@venfidata.com"
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Merchant ID / Binance Pay ID:
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentSettings.binance?.merchantId || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        binance: { ...paymentSettings.binance, merchantId: e.target.value }
+                      })}
+                      placeholder="Ej: 284910482"
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSavePaymentSetting('binance')}
+                    disabled={savingPaymentSettingKey === 'binance'}
+                    className="btn btn-primary"
+                    style={{ marginTop: 'auto', paddingTop: '0.75rem', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}
+                  >
+                    {savingPaymentSettingKey === 'binance' ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : savedSuccessKey === 'binance' ? (
+                      <Check size={16} color="#059669" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>{savedSuccessKey === 'binance' ? '¡Cambios Guardados!' : 'Guardar Cambios Binance'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. CRIPTOMONEDAS (USDT/BTC) */}
+              <div className="glass-panel" style={{ padding: '1.75rem', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>🪙</span>
+                    <div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>Criptomonedas</h4>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Wallet Directa USDT / Cripto</span>
+                    </div>
+                  </div>
+                  {/* Switch Activo / Inactivo */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: paymentSettings.crypto?.isActive !== false ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                      {paymentSettings.crypto?.isActive !== false ? 'ACTIVO' : 'PAUSADO'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={paymentSettings.crypto?.isActive !== false}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        crypto: { ...paymentSettings.crypto, isActive: e.target.checked }
+                      })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Dirección de Wallet:
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentSettings.crypto?.wallet || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        crypto: { ...paymentSettings.crypto, wallet: e.target.value }
+                      })}
+                      placeholder="Ej: TXYZ99482910... o 0x..."
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                      Red Blockchain (Network):
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentSettings.crypto?.network || ''}
+                      onChange={(e) => setPaymentSettings({
+                        ...paymentSettings,
+                        crypto: { ...paymentSettings.crypto, network: e.target.value }
+                      })}
+                      placeholder="Ej: USDT (TRC20), BEP20, Polygon"
+                      style={{ width: '100%', background: 'rgba(6, 10, 18, 0.8)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#ffffff', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSavePaymentSetting('crypto')}
+                    disabled={savingPaymentSettingKey === 'crypto'}
+                    className="btn btn-primary"
+                    style={{ marginTop: 'auto', paddingTop: '0.75rem', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}
+                  >
+                    {savingPaymentSettingKey === 'crypto' ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : savedSuccessKey === 'crypto' ? (
+                      <Check size={16} color="#059669" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>{savedSuccessKey === 'crypto' ? '¡Cambios Guardados!' : 'Guardar Cambios Cripto'}</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
