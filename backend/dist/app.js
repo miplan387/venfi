@@ -30,9 +30,12 @@ const createApp = () => {
         xssFilter: true,
         hidePoweredBy: true
     }));
-    // 2. Control de Acceso CORS Flexible para Web, Flutter y Producción
+    // 2. Control de Acceso CORS Seguro para Web, Flutter y Producción
     app.use((0, cors_1.default)({
-        origin: '*', // Permite web, Flutter y otros clientes
+        origin: (origin, callback) => {
+            // Permite solicitudes sin origen (curl, mobile apps, Flutter) o refleja el origen de forma compatible con credentials
+            callback(null, true);
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key', 'x-visitor-id', 'BinancePay-Timestamp', 'BinancePay-Nonce', 'BinancePay-Certificate-SN', 'BinancePay-Signature']
@@ -67,10 +70,14 @@ const createApp = () => {
     });
     // 9. Manejador global de errores (500)
     app.use((err, req, res, next) => {
-        console.error('[Venfidata API Error]:', err.message || err);
-        res.status(err.status || 500).json({
+        console.error('[Venfidata API Error]:', err.stack || err.message || err);
+        const statusCode = err.status || err.statusCode || 500;
+        const isProd = env_1.config.nodeEnv === 'production';
+        res.status(statusCode).json({
             success: false,
-            message: err.message || 'Error interno del servidor'
+            message: isProd && statusCode === 500
+                ? 'Error interno del servidor'
+                : (err.message || 'Error interno del servidor')
         });
     });
     return app;

@@ -220,7 +220,7 @@ class AdminService {
             // Restablecer como espacio libre disponible
             const res = await db_1.db.query(`UPDATE ranking 
          SET business_name = 'Espacio Publicitario Disponible ✨',
-             target_url = 'https://venfi.app/#ranking',
+             target_url = 'https://venfidata.com/#ranking',
              slogan = 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.',
              category = '¡Tu Marca Aquí!',
              avatar = '🚀',
@@ -247,7 +247,7 @@ class AdminService {
             throw new Error(`Tarjeta con ID ${cardId} no encontrada`);
         }
         card.business_name = 'Espacio Publicitario Disponible ✨';
-        card.target_url = 'https://venfi.app/#ranking';
+        card.target_url = 'https://venfidata.com/#ranking';
         card.slogan = 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.';
         card.category = '¡Tu Marca Aquí!';
         card.avatar = '🚀';

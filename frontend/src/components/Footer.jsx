@@ -154,8 +154,8 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
               ¿Deseas una pauta personalizada o reportar una transferencia?
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
-              <a href="mailto:soporte@venfi.app" style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Mail size={14} /> soporte@venfi.app
+              <a href="mailto:soporte@venfidata.com" style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Mail size={14} /> soporte@venfidata.com
               </a>
               <a href="https://t.me/venfioficial" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <MessageCircle size={14} /> Canal Oficial Telegram

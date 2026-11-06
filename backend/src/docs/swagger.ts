@@ -16,8 +16,8 @@ Para endpoints protegidos, envía el token JWT en el encabezado:
     `,
     contact: {
       name: 'Equipo de Soporte Venfidata',
-      email: 'soporte@venfi.app',
-      url: 'https://venfi.app'
+      email: 'soporte@venfidata.com',
+      url: 'https://venfidata.com'
     }
   },
   servers: [

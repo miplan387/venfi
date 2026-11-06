@@ -43,7 +43,7 @@ const runTests = async () => {
         const healthRes = await client.get('/api/health');
         assertTest('GET /api/health -> Estado del servidor', healthRes.status === 200 && healthRes.data.status === 'online');
         // 2. Registro de Usuario
-        const testEmail = `test_${Date.now()}@venfi.app`;
+        const testEmail = `test_${Date.now()}@venfidata.com`;
         const testUsername = `user_${Date.now()}`;
         const registerRes = await client.post('/api/auth/register', {
             email: testEmail,
@@ -146,7 +146,7 @@ const runTests = async () => {
         const pmProofRes = await client.post('/api/payments/pagomovil/proof', {
             orderId: pmOrderId,
             referenceNumber: '0987654321',
-            proofImageUrl: 'https://cdn.venfi.app/proofs/caracas_burger_pm.jpg'
+            proofImageUrl: 'https://cdn.venfidata.com/proofs/caracas_burger_pm.jpg'
         }, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
@@ -303,7 +303,7 @@ const runTests = async () => {
         const proofRes = await client.post('/api/payments/zelle/proof', {
             orderId: zelleOrderId,
             referenceCode: 'ZLL-98421048',
-            proofImageUrl: 'https://cdn.venfi.app/proofs/zll98421048.jpg'
+            proofImageUrl: 'https://cdn.venfidata.com/proofs/zll98421048.jpg'
         });
         assertTest('POST /api/payments/zelle/proof -> Envío de comprobante y referencia Zelle', proofRes.status === 200 && proofRes.data.success === true);
         // 16. Consultar Pagos Zelle Pendientes (GET /api/payments/zelle/pending)

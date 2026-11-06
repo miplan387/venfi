@@ -6,7 +6,7 @@
 -- Hash bcrypt para 'VenfiAdmin2026!'
 INSERT INTO users (id, email, username, password_hash, role)
 VALUES 
-('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'admin@venfi.app', 'venfi_admin', '$2a$10$QjY8p1Q3z5S.E7xN0kP8yO2sK7wJ7G8h0d6.l7v1k1X.r9i4l4t.y', 'admin'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'soporte@venfidata.com', 'venfi_admin', '$2a$10$QjY8p1Q3z5S.E7xN0kP8yO2sK7wJ7G8h0d6.l7v1k1X.r9i4l4t.y', 'admin'),
 ('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'electrocaracas@gmail.com', 'electrocaracas', '$2a$10$QjY8p1Q3z5S.E7xN0kP8yO2sK7wJ7G8h0d6.l7v1k1X.r9i4l4t.y', 'advertiser')
 ON CONFLICT (email) DO NOTHING;
 
@@ -22,7 +22,7 @@ VALUES
 (7, NULL, 'Servicios Jurídicos y Apostillas ⚖️', 'https://apostillasvzla.com', 'Gestoría legal exprés de antecedentes penales, títulos universitarios y partidas para emigrar.', 'Servicios Legales', '📜', 'dark', 5.00, 580, 8900, TRUE),
 (8, NULL, 'Calzados Moda Valencia 👟', 'https://modavalencia.shop', 'Venta al mayor y detal de calzado deportivo importado directo de fábrica.', 'Moda & Ropa', '👟', 'dark', 5.00, 490, 7200, TRUE),
 (9, NULL, 'Ferretería & Construcción Total 🏗️', 'https://ferreconstructora.com', 'Materiales eléctricos, tuberías, cemento y pintura con despacho directo a obra.', 'Construcción', '🧱', 'dark', 5.00, 410, 6100, TRUE),
-(10, NULL, 'Espacio Publicitario Disponible ✨', 'https://venfi.app/#ranking', 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.', '¡Tu Marca Aquí!', '🚀', 'dark', 0.00, 120, 4500, TRUE)
+(10, NULL, 'Espacio Publicitario Disponible ✨', 'https://venfidata.com/#ranking', 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.', '¡Tu Marca Aquí!', '🚀', 'dark', 0.00, 120, 4500, TRUE)
 ON CONFLICT (position) DO UPDATE SET
     business_name = EXCLUDED.business_name,
     target_url = EXCLUDED.target_url,

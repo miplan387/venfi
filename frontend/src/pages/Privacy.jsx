@@ -93,7 +93,7 @@ export const Privacy = ({ onBackToPortal }) => {
               En cualquier momento, usted tiene derecho a solicitar el acceso a sus datos almacenados, la rectificación de información inexacta o la supresión definitiva de su cuenta de anunciante.
             </p>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.7, marginTop: '0.75rem', margin: 0 }}>
-              Para ejercer cualquiera de estos derechos, contáctenos directamente a través del correo oficial: <strong style={{ color: 'var(--color-primary)' }}>privacidad@venfi.app</strong>.
+              Para ejercer cualquiera de estos derechos, contáctenos directamente a través del correo oficial: <strong style={{ color: 'var(--color-primary)' }}>soporte@venfidata.com</strong>.
             </p>
           </div>
         </div>
@@ -108,7 +108,7 @@ export const Privacy = ({ onBackToPortal }) => {
           border: '1px solid var(--border-subtle)'
         }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-            Oficial de Privacidad y Seguridad Digital: <strong style={{ color: 'var(--color-primary)' }}>seguridad@venfi.app</strong>
+            Oficial de Privacidad y Seguridad Digital: <strong style={{ color: 'var(--color-primary)' }}>soporte@venfidata.com</strong>
           </p>
         </div>
       </div>

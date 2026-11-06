@@ -362,7 +362,7 @@ class DatabaseManager {
         this.inMemoryDb.users = [
             {
                 id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-                email: 'admin@venfi.app',
+                email: 'soporte@venfidata.com',
                 username: 'venfi_admin',
                 password_hash: '$2a$10$QjY8p1Q3z5S.E7xN0kP8yO2sK7wJ7G8h0d6.l7v1k1X.r9i4l4t.y',
                 role: 'admin',
@@ -553,7 +553,7 @@ class DatabaseManager {
                 user_id: null,
                 payment_id: null,
                 business_name: 'Espacio Publicitario Disponible ✨',
-                target_url: 'https://venfi.app/#ranking',
+                target_url: 'https://venfidata.com/#ranking',
                 slogan: 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.',
                 category: '¡Tu Marca Aquí!',
                 avatar: '🚀',

@@ -4288,7 +4288,7 @@ export const AdminCards = ({ onBackToPortal }) => {
                         />
                         <input
                           type="text"
-                          placeholder="Valor (ej: pagos@venfi.app)"
+                          placeholder="Valor (ej: soporte@venfidata.com)"
                           value={pair.value}
                           onChange={(e) => {
                             const updated = [...methodFieldPairs];

@@ -17,7 +17,7 @@ export const requireAdmin = (
   if (adminKey === 'venfi-admin-2026') {
     req.user = {
       userId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      email: 'admin@venfi.app',
+      email: 'soporte@venfidata.com',
       username: 'venfi_admin',
       role: 'admin'
     };

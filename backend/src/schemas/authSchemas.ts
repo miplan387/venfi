@@ -30,3 +30,16 @@ export const googleAuthSchema = z.object({
     walletAddress: z.string().optional()
   })
 });
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email('Correo electrónico no válido')
+  })
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    token: z.string().min(1, 'El token de restablecimiento es obligatorio'),
+    newPassword: z.string().min(6, 'La nueva contraseña debe tener al menos 6 caracteres')
+  })
+});

@@ -286,7 +286,7 @@ export const AdvertiseModal = ({
           body: JSON.stringify({
             orderId,
             referenceNumber: formData.referenceCode,
-            proofImageUrl: formData.proofImageUrl || 'https://cdn.venfi.app/proofs/pm_receipt.jpg'
+            proofImageUrl: formData.proofImageUrl || 'https://cdn.venfidata.com/proofs/pm_receipt.jpg'
           })
         });
 
@@ -940,7 +940,7 @@ export const AdvertiseModal = ({
                   <a
                     href={paymentOrder?.binancePay?.deeplink || '#'}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     style={{
                       background: 'rgba(251, 191, 36, 0.15)',
                       color: 'var(--color-gold)',
@@ -998,12 +998,10 @@ export const AdvertiseModal = ({
 
                 <div style={{ background: 'rgba(255,255,255,0.04)', padding: '0.85rem', borderRadius: '10px', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                    <span>Correo {formData.paymentMethod === 'zinli' ? 'Zinli' : 'Zelle'}: <strong style={{ color: '#ffffff' }}>{methodConfig?.fields?.email || (formData.paymentMethod === 'zinli' ? 'miplan3d@gmail.com' : 'pagos@venfi.app')}</strong></span>
-                    <span>Correo {formData.paymentMethod === 'zinli' ? 'Zinli' : 'Zelle'}: <strong style={{ color: '#ffffff' }}>{paymentSettings.zinli?.email || methodConfig?.fields?.email || 'miplan3d@gmail.com'}</strong></span>
+                    <span>Correo {formData.paymentMethod === 'zinli' ? 'Zinli' : 'Zelle'}: <strong style={{ color: '#ffffff' }}>{paymentSettings.zinli?.email || methodConfig?.fields?.email || (formData.paymentMethod === 'zinli' ? 'miplan3d@gmail.com' : 'soporte@venfidata.com')}</strong></span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(methodConfig?.fields?.email || (formData.paymentMethod === 'zinli' ? 'miplan3d@gmail.com' : 'pagos@venfi.app'), 'zinli_email')}
-                      onClick={() => copyToClipboard(paymentSettings.zinli?.email || methodConfig?.fields?.email || 'miplan3d@gmail.com', 'zinli_email')}
+                      onClick={() => copyToClipboard(paymentSettings.zinli?.email || methodConfig?.fields?.email || (formData.paymentMethod === 'zinli' ? 'miplan3d@gmail.com' : 'soporte@venfidata.com'), 'zinli_email')}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       title="Copiar correo"
                     >
@@ -1011,12 +1009,10 @@ export const AdvertiseModal = ({
                     </button>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: '0.4rem' }}>
-                    <span>Titular: <strong style={{ color: '#ffffff' }}>{methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata Publicidad' : 'Venfidata Media LLC')}</strong></span>
-                    <span>Titular: <strong style={{ color: '#ffffff' }}>{paymentSettings.zinli?.name || methodConfig?.fields?.name || 'Venfidata'}</strong></span>
+                    <span>Titular: <strong style={{ color: '#ffffff' }}>{paymentSettings.zinli?.name || methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata' : 'Venfidata Media LLC')}</strong></span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata Publicidad' : 'Venfidata Media LLC'), 'zinli_name')}
-                      onClick={() => copyToClipboard(paymentSettings.zinli?.name || methodConfig?.fields?.name || 'Venfidata', 'zinli_name')}
+                      onClick={() => copyToClipboard(paymentSettings.zinli?.name || methodConfig?.fields?.name || methodConfig?.fields?.beneficiary || (formData.paymentMethod === 'zinli' ? 'Venfidata' : 'Venfidata Media LLC'), 'zinli_name')}
                       style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       title="Copiar titular"
                     >
@@ -1314,7 +1310,7 @@ export const AdvertiseModal = ({
                           style={{ display: 'none' }}
                           onChange={(e) => {
                             if (e.target.files?.[0]) {
-                              setFormData({ ...formData, proofImageUrl: `https://cdn.venfi.app/proofs/${e.target.files[0].name}` });
+                              setFormData({ ...formData, proofImageUrl: `https://cdn.venfidata.com/proofs/${e.target.files[0].name}` });
                             }
                           }}
                         />
@@ -1556,7 +1552,7 @@ export const AdvertiseModal = ({
                           style={{ display: 'none' }}
                           onChange={(e) => {
                             if (e.target.files?.[0]) {
-                              setFormData({ ...formData, proofImageUrl: `https://cdn.venfi.app/proofs/${e.target.files[0].name}` });
+                              setFormData({ ...formData, proofImageUrl: `https://cdn.venfidata.com/proofs/${e.target.files[0].name}` });
                             }
                           }}
                         />

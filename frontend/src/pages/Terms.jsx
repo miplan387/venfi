@@ -144,7 +144,7 @@ export const Terms = ({ onBackToPortal }) => {
           border: '1px solid var(--border-subtle)'
         }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-            Para consultas legales o notificaciones regulatorias: <strong style={{ color: 'var(--color-gold)' }}>legal@venfi.app</strong>
+            Para consultas legales o notificaciones regulatorias: <strong style={{ color: 'var(--color-gold)' }}>soporte@venfidata.com</strong>
           </p>
         </div>
       </div>

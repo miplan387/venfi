@@ -137,7 +137,7 @@ class DashboardService {
                 tier: r.tier || (r.position === 1 ? 'gold' : r.position <= 3 ? 'silver' : 'dark'),
                 businessName: r.business_name || 'Mi Marca VIP',
                 slogan: r.slogan || 'Impulsando finanzas en Venezuela',
-                targetUrl: r.target_url || 'https://venfi.app',
+                targetUrl: r.target_url || 'https://venfidata.com',
                 avatar: r.avatar || '👑',
                 category: r.category || 'Tecnología & Finanzas',
                 amountPaid: Number(r.amount_paid || 15.00),

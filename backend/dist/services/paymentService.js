@@ -195,7 +195,7 @@ class PaymentService {
                 currency: 'USD',
                 paymentMethod: 'zelle',
                 zelleInfo: {
-                    recipientEmail: 'pagos@venfi.app',
+                    recipientEmail: 'soporte@venfidata.com',
                     accountHolder: 'Venfidata Media LLC',
                     referenceNote: orderId,
                     amount: finalAmount,
@@ -381,11 +381,11 @@ class PaymentService {
             return {
                 ...z,
                 business_name: payment.business_name || 'Anunciante Venfidata',
-                target_url: payment.target_url || 'https://venfi.app',
+                target_url: payment.target_url || 'https://venfidata.com',
                 slogan: payment.slogan || 'Campaña publicitaria',
                 category: payment.category || 'General',
                 avatar: payment.avatar || '🚀',
-                user_email: user.email || 'anunciante@venfi.app'
+                user_email: user.email || 'anunciante@venfidata.com'
             };
         });
     }
@@ -507,7 +507,7 @@ class PaymentService {
         const orderId = `VENFI_RENEW_${Date.now()}_${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         // Obtener detalles de la pauta existente
         let businessName = 'Anuncio Renovado';
-        let targetUrl = 'https://venfi.app';
+        let targetUrl = 'https://venfidata.com';
         let slogan = 'Pauta publicitaria extendida en Venfidata';
         let avatar = '🚀';
         let category = 'General';
@@ -743,7 +743,7 @@ class PaymentService {
             const user = store.users.find(u => u.id === p.user_id) || {};
             return {
                 ...p,
-                user_email: user.email || 'anunciante@venfi.app',
+                user_email: user.email || 'anunciante@venfidata.com',
                 user_username: user.username || 'Anunciante'
             };
         });

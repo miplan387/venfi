@@ -41,5 +41,23 @@ export const env = {
   GOLD_API_KEY: process.env.GOLD_API_KEY || '',
 };
 
+// Validación de seguridad para variables críticas en entorno de producción
+if (config.nodeEnv === 'production') {
+  const insecureDefaults = [
+    'venfi_jwt_super_secret_access_key_2026_matrix_dark',
+    'CAMBIAR_ESTO_EN_PRODUCCION',
+    'your-secret-key',
+    'secret',
+    'admin123'
+  ];
+  if (!process.env.JWT_SECRET || insecureDefaults.includes(process.env.JWT_SECRET)) {
+    console.warn('⚠️ [SECURITY WARNING]: JWT_SECRET en producción es inseguro o utiliza un valor por defecto. Configure un secreto criptográfico en .env.');
+  }
+  if (!process.env.JWT_REFRESH_SECRET || insecureDefaults.includes(process.env.JWT_REFRESH_SECRET)) {
+    console.warn('⚠️ [SECURITY WARNING]: JWT_REFRESH_SECRET en producción es inseguro o utiliza un valor por defecto.');
+  }
+}
+
+
 
 

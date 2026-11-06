@@ -39,3 +39,65 @@ export const clickTrackSchema = z.object({
     userAgent: z.string().optional()
   }).optional()
 });
+
+export const createPagoMovilSchema = z.object({
+  body: z.object({
+    position: z.number().int().min(1).max(10),
+    amountUsd: z.number().positive().optional(),
+    durationHours: z.number().int().positive().default(24),
+    businessName: z.string().min(2).max(150),
+    targetUrl: z.string().url('La URL de destino debe ser válida'),
+    slogan: z.string().min(5).max(255),
+    category: z.string().default('General'),
+    avatar: z.string().default('🚀'),
+    zoneKey: z.string().optional().default('nacional'),
+    zone_key: z.string().optional()
+  })
+});
+
+export const paymentProofSchema = z.object({
+  body: z.object({
+    orderId: z.string().min(1, 'El ID de orden es obligatorio'),
+    referenceNumber: z.string().optional(),
+    referenceCode: z.string().optional(),
+    proofImageUrl: z.string().optional()
+  }).refine(data => data.referenceNumber || data.referenceCode, {
+    message: 'El número o código de referencia es obligatorio',
+    path: ['referenceNumber']
+  })
+});
+
+export const verifyPaymentSchema = z.object({
+  body: z.object({
+    orderId: z.string().min(1, 'El ID de orden es obligatorio'),
+    isApproved: z.boolean().optional(),
+    adminNotes: z.string().optional()
+  })
+});
+
+export const approveRejectPaymentSchema = z.object({
+  body: z.object({
+    orderId: z.string().min(1, 'El ID de orden es obligatorio'),
+    adminNotes: z.string().optional()
+  })
+});
+
+export const renewPaymentSchema = z.object({
+  body: z.object({
+    position: z.number().int().min(1).max(10).optional(),
+    durationHours: z.number().int().positive().optional(),
+    paymentMethod: z.string().optional(),
+    paymentId: z.union([z.string(), z.number()]).optional()
+  })
+});
+
+export const pagoMovilConfigSchema = z.object({
+  body: z.object({
+    bank: z.string().min(2, 'El nombre del banco es obligatorio'),
+    bankCode: z.string().min(4).max(4).optional(),
+    phone: z.string().min(7).max(20),
+    idNumber: z.string().min(4).max(20),
+    beneficiary: z.string().optional(),
+    beneficiaryName: z.string().optional()
+  })
+});

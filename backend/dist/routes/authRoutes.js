@@ -12,8 +12,8 @@ router.post('/login', rateLimiter_1.authRateLimiter, (0, validate_1.validateRequ
 router.post('/refresh', (0, validate_1.validateRequest)(authSchemas_1.refreshTokenSchema), (req, res) => authController_1.authController.refreshToken(req, res));
 router.get('/me', authMiddleware_1.authenticateJwt, (req, res) => authController_1.authController.getMe(req, res));
 router.post('/google', (0, validate_1.validateRequest)(authSchemas_1.googleAuthSchema), (req, res) => authController_1.authController.googleAuth(req, res));
-// Recuperación de Contraseña
-router.post('/forgot-password', rateLimiter_1.authRateLimiter, (req, res) => authController_1.authController.forgotPassword(req, res));
-router.post('/reset-password', rateLimiter_1.authRateLimiter, (req, res) => authController_1.authController.resetPassword(req, res));
+// Recuperación de Contraseña protegida con Rate Limiting y Validación de Esquema
+router.post('/forgot-password', rateLimiter_1.authRateLimiter, (0, validate_1.validateRequest)(authSchemas_1.forgotPasswordSchema), (req, res) => authController_1.authController.forgotPassword(req, res));
+router.post('/reset-password', rateLimiter_1.authRateLimiter, (0, validate_1.validateRequest)(authSchemas_1.resetPasswordSchema), (req, res) => authController_1.authController.resetPassword(req, res));
 exports.default = router;
 //# sourceMappingURL=authRoutes.js.map

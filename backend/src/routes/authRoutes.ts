@@ -7,7 +7,9 @@ import {
   registerSchema, 
   loginSchema, 
   refreshTokenSchema, 
-  googleAuthSchema 
+  googleAuthSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema
 } from '../schemas/authSchemas';
 
 const router = Router();
@@ -18,8 +20,8 @@ router.post('/refresh', validateRequest(refreshTokenSchema), (req, res) => authC
 router.get('/me', authenticateJwt, (req, res) => authController.getMe(req, res));
 router.post('/google', validateRequest(googleAuthSchema), (req, res) => authController.googleAuth(req, res));
 
-// Recuperación de Contraseña
-router.post('/forgot-password', authRateLimiter, (req, res) => authController.forgotPassword(req, res));
-router.post('/reset-password', authRateLimiter, (req, res) => authController.resetPassword(req, res));
+// Recuperación de Contraseña protegida con Rate Limiting y Validación de Esquema
+router.post('/forgot-password', authRateLimiter, validateRequest(forgotPasswordSchema), (req, res) => authController.forgotPassword(req, res));
+router.post('/reset-password', authRateLimiter, validateRequest(resetPasswordSchema), (req, res) => authController.resetPassword(req, res));
 
 export default router;

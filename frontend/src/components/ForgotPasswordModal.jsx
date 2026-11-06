@@ -250,15 +250,24 @@ export const ForgotPasswordModal = ({ isOpen, onClose, onBackToLogin }) => {
 
         <div style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: '0.4rem',
+          gap: '0.35rem',
           fontSize: '0.72rem',
           color: 'var(--text-muted)',
           marginTop: '1.5rem',
-          justifyContent: 'center'
+          textAlign: 'center'
         }}>
-          <ShieldCheck size={14} color="var(--color-primary)" />
-          <span>Proceso protegido con tokens de un solo uso</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <ShieldCheck size={14} color="var(--color-primary)" />
+            <span>Proceso protegido con tokens de un solo uso</span>
+          </div>
+          <div>
+            ¿Problemas con el acceso? Escríbenos a{' '}
+            <a href="mailto:soporte@venfidata.com" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}>
+              soporte@venfidata.com
+            </a>
+          </div>
         </div>
       </div>
     </div>
