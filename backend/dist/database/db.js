@@ -23,6 +23,9 @@ class DatabaseManager {
         commodity_history: [],
         zones: [],
         zone_pricing: [],
+        visits: [
+            { id: 1, total_visits: 0, active_users: 1, last_updated: new Date().toISOString() }
+        ],
         payment_settings: [
             { key: 'pago_movil', value: { bank: 'BNC', phone: '0412-4160819', idNumber: 'V-11112387', beneficiary: 'Venfidata C.A.' }, updated_at: new Date().toISOString() },
             { key: 'zinli', value: { email: 'miplan3d@gmail.com', name: 'Venfidata' }, updated_at: new Date().toISOString() },
@@ -230,11 +233,30 @@ class DatabaseManager {
                 this.isConnectedToPostgres = true;
                 console.log('✅ Conectado exitosamente a PostgreSQL (Supabase / Pool)');
                 // Ejecutar schema si es necesario
-                const schemaPath = path_1.default.join(__dirname, 'schema.sql');
+                let schemaPath = path_1.default.join(__dirname, 'schema.sql');
+                if (!fs_1.default.existsSync(schemaPath)) {
+                    const srcSchemaPath = path_1.default.join(__dirname, '../../src/database/schema.sql');
+                    if (fs_1.default.existsSync(srcSchemaPath)) {
+                        schemaPath = srcSchemaPath;
+                    }
+                }
                 if (fs_1.default.existsSync(schemaPath)) {
                     const schemaSql = fs_1.default.readFileSync(schemaPath, 'utf-8');
                     await client.query(schemaSql);
                 }
+                // Asegurar que la tabla visits existe con su registro inicial (id=1)
+                await client.query(`
+          CREATE TABLE IF NOT EXISTS visits (
+            id SERIAL PRIMARY KEY,
+            total_visits BIGINT DEFAULT 0,
+            active_users INT DEFAULT 0,
+            last_updated TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+          );
+
+          INSERT INTO visits (id, total_visits, active_users, last_updated)
+          VALUES (1, 0, 0, CURRENT_TIMESTAMP)
+          ON CONFLICT (id) DO NOTHING;
+        `);
                 // Asegurar columnas de variación en rates_history
                 await client.query(`
           ALTER TABLE rates_history ADD COLUMN IF NOT EXISTS variation_abs DECIMAL(10,4);
@@ -296,10 +318,14 @@ class DatabaseManager {
           CREATE INDEX IF NOT EXISTS idx_ranking_zone ON ranking(zone_key, position);
           UPDATE ranking SET zone_key = 'nacional' WHERE zone_key IS NULL;
           ALTER TABLE ranking DROP CONSTRAINT IF EXISTS ranking_position_key;
+          ALTER TABLE ranking DROP CONSTRAINT IF EXISTS ranking_tier_check;
           DO $$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ranking_zone_position_key') THEN
               ALTER TABLE ranking ADD CONSTRAINT ranking_zone_position_key UNIQUE (zone_key, position);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ranking_tier_check') THEN
+              ALTER TABLE ranking ADD CONSTRAINT ranking_tier_check CHECK (tier IN ('gold', 'silver', 'bronze', 'dark'));
             END IF;
           END $$;
 
@@ -383,18 +409,18 @@ class DatabaseManager {
                 google_id: null
             }
         ];
-        // Cargar Ranking Inicial
+        // Cargar Ranking Inicial por Defecto
         this.inMemoryDb.ranking = [
             {
                 id: 1,
                 position: 1,
                 user_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
                 payment_id: null,
-                business_name: 'ElectroCaracas Express ⚡',
-                target_url: 'https://instagram.com/electrocaracas',
-                slogan: 'Los mejores precios en iPhone, PlayStation 5 y Laptops con envíos a toda Venezuela y garantía de 1 año.',
-                category: 'Tecnología & Retail',
-                avatar: '⚡',
+                business_name: 'Digibird - Desarrollo de Software',
+                target_url: 'https://digibird.com',
+                slogan: 'Soluciones tecnológicas a medida',
+                category: 'Software & Tecnología',
+                avatar: '🦅',
                 tier: 'gold',
                 amount_paid: 15.00,
                 start_time: new Date().toISOString(),
@@ -408,11 +434,11 @@ class DatabaseManager {
                 position: 2,
                 user_id: null,
                 payment_id: null,
-                business_name: 'VenRemesas Direct 🇻🇪🇺🇸',
-                target_url: 'https://venremesas.com',
-                slogan: 'Envía dinero desde EE.UU., España y Chile con la mejor tasa del mercado. Acreditación en 5 minutos.',
-                category: 'Finanzas & Remesas',
-                avatar: '💸',
+                business_name: 'Venfidata - Inteligencia Financiera y publicidad',
+                target_url: 'https://venfidata.com',
+                slogan: 'Tu centro de información financiera',
+                category: 'Finanzas & Publicidad',
+                avatar: '📊',
                 tier: 'silver',
                 amount_paid: 10.00,
                 start_time: new Date().toISOString(),
@@ -426,12 +452,12 @@ class DatabaseManager {
                 position: 3,
                 user_id: null,
                 payment_id: null,
-                business_name: 'CriptoTrader VE Academy 📈',
-                target_url: 'https://t.me/criptotradervip',
-                slogan: 'Aprende trading de futuros y arbitraje P2P en Binance. Comunidad VIP con más de 3,500 miembros activos.',
-                category: 'Educación & Cripto',
-                avatar: '📊',
-                tier: 'silver',
+                business_name: 'DigiHIS - Sistema Administrativo de Clínicas',
+                target_url: 'https://digihis.com',
+                slogan: 'Gestión médica inteligente',
+                category: 'Salud & Software',
+                avatar: '🏥',
+                tier: 'bronze',
                 amount_paid: 10.00,
                 start_time: new Date().toISOString(),
                 end_time: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
@@ -444,11 +470,11 @@ class DatabaseManager {
                 position: 4,
                 user_id: null,
                 payment_id: null,
-                business_name: 'Repuestos Automotrices El Ávila 🚗',
-                target_url: 'https://repuestosavila.com',
-                slogan: 'Especialistas en tren delantero, motores y suspensión para Toyota, Ford y Chevrolet.',
-                category: 'Automotriz',
-                avatar: '🔧',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
                 amount_paid: 5.00,
                 start_time: new Date().toISOString(),
@@ -462,11 +488,11 @@ class DatabaseManager {
                 position: 5,
                 user_id: null,
                 payment_id: null,
-                business_name: 'TuViaje Margarita & Los Roques ✈️',
-                target_url: 'https://tuviajemargarita.ve',
-                slogan: 'Paquetes turísticos todo incluido con boletos aéreos y hospedaje de lujo.',
-                category: 'Turismo & Viajes',
-                avatar: '🏖️',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
                 amount_paid: 5.00,
                 start_time: new Date().toISOString(),
@@ -480,11 +506,11 @@ class DatabaseManager {
                 position: 6,
                 user_id: null,
                 payment_id: null,
-                business_name: 'Burger Brothers Caracas 🍔',
-                target_url: 'https://instagram.com/burgerbrothersccs',
-                slogan: 'Las mejores smash burgers con pan brioche artesanal en Las Mercedes y Chacao.',
-                category: 'Gastronomía',
-                avatar: '🍔',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
                 amount_paid: 5.00,
                 start_time: new Date().toISOString(),
@@ -498,11 +524,11 @@ class DatabaseManager {
                 position: 7,
                 user_id: null,
                 payment_id: null,
-                business_name: 'Servicios Jurídicos y Apostillas ⚖️',
-                target_url: 'https://apostillasvzla.com',
-                slogan: 'Gestoría legal exprés de antecedentes penales, títulos universitarios y partidas para emigrar.',
-                category: 'Servicios Legales',
-                avatar: '📜',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
                 amount_paid: 5.00,
                 start_time: new Date().toISOString(),
@@ -516,11 +542,11 @@ class DatabaseManager {
                 position: 8,
                 user_id: null,
                 payment_id: null,
-                business_name: 'Calzados Moda Valencia 👟',
-                target_url: 'https://modavalencia.shop',
-                slogan: 'Venta al mayor y detal de calzado deportivo importado directo de fábrica.',
-                category: 'Moda & Ropa',
-                avatar: '👟',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
                 amount_paid: 5.00,
                 start_time: new Date().toISOString(),
@@ -534,11 +560,11 @@ class DatabaseManager {
                 position: 9,
                 user_id: null,
                 payment_id: null,
-                business_name: 'Ferretería & Construcción Total 🏗️',
-                target_url: 'https://ferreconstructora.com',
-                slogan: 'Materiales eléctricos, tuberías, cemento y pintura con despacho directo a obra.',
-                category: 'Construcción',
-                avatar: '🧱',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
                 amount_paid: 5.00,
                 start_time: new Date().toISOString(),
@@ -552,13 +578,13 @@ class DatabaseManager {
                 position: 10,
                 user_id: null,
                 payment_id: null,
-                business_name: 'Espacio Publicitario Disponible ✨',
-                target_url: 'https://venfidata.com/#ranking',
-                slogan: 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.',
-                category: '¡Tu Marca Aquí!',
-                avatar: '🚀',
+                business_name: 'MG Empresarial',
+                target_url: 'https://mgempresarial.com',
+                slogan: 'Soluciones corporativas',
+                category: 'Corporativo & Negocios',
+                avatar: '🏢',
                 tier: 'dark',
-                amount_paid: 0.00,
+                amount_paid: 5.00,
                 start_time: new Date().toISOString(),
                 end_time: null,
                 clicks_received: 120,

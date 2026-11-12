@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw, 
   ArrowUpRight,
@@ -19,6 +19,13 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
   const [trendModalOpen, setTrendModalOpen] = useState(false);
   const [selectedTrendRateKey, setSelectedTrendRateKey] = useState('bcv');
   const [selectedTrendRateItem, setSelectedTrendRateItem] = useState({});
+
+  // Cerrar el modal al navegar entre secciones o recibir evento global
+  useEffect(() => {
+    const handleClose = () => setTrendModalOpen(false);
+    window.addEventListener('close-trend-modal', handleClose);
+    return () => window.removeEventListener('close-trend-modal', handleClose);
+  }, []);
 
   const handleManualRefresh = () => {
     setIsRefreshing(true);

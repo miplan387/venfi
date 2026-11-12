@@ -1,9 +1,69 @@
 import { db } from '../database/db';
+import { supabase } from '../database/supabase';
 
 export class RankingService {
+  private mapPricingToEmptySlots(normalizedZone: string, pricingRows: any[]) {
+    return pricingRows.map((p: any) => ({
+      id: `slot_${normalizedZone}_${p.position}`,
+      position: p.position,
+      user_id: null,
+      payment_id: null,
+      business_name: 'Espacio Publicitario Disponible ✨',
+      target_url: 'https://venfidata.com/#ranking',
+      slogan: `¡Sé el primero en posicionar tu marca en ${normalizedZone.toUpperCase()}! Posición #${p.position} disponible por $${Number(p.price_usd).toFixed(2)}.`,
+      category: 'Publicidad Local',
+      avatar: '🚀',
+      tier: p.tier,
+      amount_paid: 0.00,
+      start_time: new Date().toISOString(),
+      end_time: null,
+      clicks_received: 0,
+      views_received: 0,
+      is_active: true,
+      zone_key: normalizedZone
+    }));
+  }
+
   public async getTop10(zoneKey: string = 'nacional') {
     const normalizedZone = (zoneKey || 'nacional').toLowerCase().trim();
 
+    // 1. Prioridad: API REST de Supabase (HTTPS / Puerto 443)
+    if (supabase) {
+      try {
+        const { data: rankingRows, error: rankingError } = await supabase
+          .from('ranking')
+          .select('id, position, user_id, payment_id, business_name, target_url, slogan, category, avatar, tier, amount_paid, start_time, end_time, clicks_received, views_received, is_active, zone_key')
+          .eq('zone_key', normalizedZone)
+          .order('position', { ascending: true })
+          .limit(10);
+
+        if (rankingError) {
+          console.warn('⚠️ Error al leer ranking desde Supabase:', rankingError.message);
+        } else if (rankingRows && rankingRows.length > 0) {
+          return rankingRows;
+        } else {
+          // Si la zona aún no tiene anuncios pautados, consultar tarifas en zone_pricing vía Supabase
+          const { data: pricingRows, error: pricingError } = await supabase
+            .from('zone_pricing')
+            .select('position, tier, price_usd, duration_hours')
+            .eq('zone_key', normalizedZone)
+            .eq('is_active', true)
+            .order('position', { ascending: true });
+
+          if (!pricingError && pricingRows && pricingRows.length > 0) {
+            return this.mapPricingToEmptySlots(normalizedZone, pricingRows);
+          }
+
+          if (!pricingError) {
+            return [];
+          }
+        }
+      } catch (err: any) {
+        console.warn('⚠️ Excepción al leer ranking desde Supabase, usando respaldo:', err.message);
+      }
+    }
+
+    // 2. Respaldo local: Pool PostgreSQL directo
     if (db.isPostgresActive) {
       const res = await db.query(
         `SELECT id, position, user_id, payment_id, business_name, target_url, slogan, category, avatar, tier, amount_paid, start_time, end_time, clicks_received, views_received, is_active, zone_key
@@ -24,30 +84,13 @@ export class RankingService {
       );
 
       if (pricingRes.rows.length > 0) {
-        return pricingRes.rows.map(p => ({
-          id: `slot_${normalizedZone}_${p.position}`,
-          position: p.position,
-          user_id: null,
-          payment_id: null,
-          business_name: 'Espacio Publicitario Disponible ✨',
-          target_url: 'https://venfidata.com/#ranking',
-          slogan: `¡Sé el primero en posicionar tu marca en ${normalizedZone.toUpperCase()}! Posición #${p.position} disponible por $${Number(p.price_usd).toFixed(2)}.`,
-          category: 'Publicidad Local',
-          avatar: '🚀',
-          tier: p.tier,
-          amount_paid: 0.00,
-          start_time: new Date().toISOString(),
-          end_time: null,
-          clicks_received: 0,
-          views_received: 0,
-          is_active: true,
-          zone_key: normalizedZone
-        }));
+        return this.mapPricingToEmptySlots(normalizedZone, pricingRes.rows);
       }
 
       return [];
     }
 
+    // 3. Fallback en memoria
     const store = db.getInMemoryStore();
     const zoneAds = (store.ranking || []).filter((r: any) => (r.zone_key || 'nacional') === normalizedZone);
     if (zoneAds.length > 0) {
@@ -56,25 +99,8 @@ export class RankingService {
 
     const pricings = (store.zone_pricing || []).filter((p: any) => p.zone_key === normalizedZone);
     if (pricings.length > 0) {
-      return pricings.sort((a: any, b: any) => a.position - b.position).map((p: any) => ({
-        id: `slot_${normalizedZone}_${p.position}`,
-        position: p.position,
-        user_id: null,
-        payment_id: null,
-        business_name: 'Espacio Publicitario Disponible ✨',
-        target_url: 'https://venfidata.com/#ranking',
-        slogan: `¡Sé el primero en posicionar tu marca en ${normalizedZone.toUpperCase()}! Posición #${p.position} disponible por $${Number(p.price_usd).toFixed(2)}.`,
-        category: 'Publicidad Local',
-        avatar: '🚀',
-        tier: p.tier,
-        amount_paid: 0.00,
-        start_time: new Date().toISOString(),
-        end_time: null,
-        clicks_received: 0,
-        views_received: 0,
-        is_active: true,
-        zone_key: normalizedZone
-      }));
+      const sorted = [...pricings].sort((a: any, b: any) => a.position - b.position);
+      return this.mapPricingToEmptySlots(normalizedZone, sorted);
     }
 
     return [];

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 
 const NavTabs = () => {
-  // Array de pestañas - fácil de extender en el futuro (ej. petróleo, oro)
+  // Array de pestañas ordenado con Noticias al inicio, seguido de Ranking, Tasas, etc.
   const tabs = [
+    { id: 'noticias', label: 'Noticias', icon: '📰' },
     { id: 'ranking', label: 'Ranking', icon: '🏆' },
     { id: 'tasas', label: 'Tasas', icon: '📈' },
     { id: 'convertidor', label: 'Convertidor', icon: '🧮' },
     { id: 'remesas', label: 'Remesas', icon: '💸' },
     { id: 'petroleo', label: 'Petróleo', icon: '🛢️' },
     { id: 'oro', label: 'Oro', icon: '🥇' },
-    { id: 'noticias', label: 'Noticias', icon: '📰' },
   ];
 
-  const [activeTab, setActiveTab] = useState('tasas');
+  const [activeTab, setActiveTab] = useState('noticias');
 
   // Detectar la sección activa con Intersection Observer
   useEffect(() => {
@@ -40,6 +40,9 @@ const NavTabs = () => {
 
   // Scroll suave a la sección respetando la altura del Header (76px) + NavTabs (~54px)
   const scrollToSection = (id) => {
+    // Cerrar cualquier modal de tendencias abierto al navegar entre secciones
+    window.dispatchEvent(new CustomEvent('close-trend-modal'));
+
     const element = document.getElementById(id);
     if (element) {
       const headerEl = document.querySelector('header');

@@ -19,6 +19,9 @@ import { AuthModal } from './components/AuthModal';
 import { ForgotPasswordModal } from './components/ForgotPasswordModal';
 import { TermsModal } from './components/TermsModal';
 import { Notifications } from './components/Notifications';
+import { GoldSplashAd } from './components/GoldSplashAd';
+import { NewsTicker } from './components/NewsTicker';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Dashboard } from './pages/Dashboard';
 import { Terms } from './pages/Terms';
 import { Privacy } from './pages/Privacy';
@@ -210,6 +213,9 @@ export function AppContent() {
           {/* Menú de Pestañas Sticky de Navegación */}
           <NavTabs />
 
+          {/* Cinta de Noticias (Ticker) con Control de Velocidad */}
+          <NewsTicker />
+
           {/* Sección 1: Tasas BCV, Paralelo, USDT, Euro */}
           <HeroRates 
             rates={rates} 
@@ -324,15 +330,20 @@ export function AppContent() {
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
       />
+
+      {/* Publicidad Emergente de Oro Arrastrable (Splash Ad Puesto #1) */}
+      <GoldSplashAd onTrackClick={handleTrackClick} defaultSlot={slots?.[0]} />
     </div>
   );
 }
 
 export function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

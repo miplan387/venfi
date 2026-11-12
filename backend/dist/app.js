@@ -11,6 +11,7 @@ const routes_1 = __importDefault(require("./routes"));
 const swagger_1 = require("./docs/swagger");
 const rateLimiter_1 = require("./middleware/rateLimiter");
 const env_1 = require("./config/env");
+const supabase_1 = require("./database/supabase");
 const createApp = () => {
     const app = (0, express_1.default)();
     // 1. Headers de Seguridad con Helmet (Configuración Compatible con Cross-Origin y SPA)
@@ -47,9 +48,79 @@ const createApp = () => {
     app.use(rateLimiter_1.generalRateLimiter);
     // 5. Documentación Swagger UI en /api-docs
     (0, swagger_1.setupSwagger)(app);
-    // 6. Montar Rutas API
+    // 6. RUTA DE CHEQUEO PARA CPANEL (Evita el error de content-type)
+    // cPanel hace una petición a la URL de la aplicación y espera HTML.
+    app.get('/api', (req, res) => {
+        res.send('<h1>Venfidata API está en línea</h1>');
+    });
+    app.get('/api/', (req, res) => {
+        res.send('<h1>Venfidata API está en línea</h1>');
+    });
+    // Endpoint temporal de diagnóstico de conexión a Supabase REST API (HTTPS / Puerto 443)
+    app.get('/api/db-test', async (req, res) => {
+        let supabaseHost = 'no_configurado';
+        try {
+            if (process.env.SUPABASE_URL) {
+                supabaseHost = new URL(process.env.SUPABASE_URL).hostname;
+            }
+        }
+        catch (_) {
+            supabaseHost = 'url_invalida';
+        }
+        const diagnostics = {
+            nodeEnv: env_1.config.nodeEnv,
+            isSupabaseConfigured: supabase_1.isSupabaseConfigured,
+            hasSupabaseUrl: Boolean(process.env.SUPABASE_URL),
+            hasSupabaseServiceKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+            supabaseHost
+        };
+        if (!supabase_1.supabase) {
+            res.status(500).json({
+                success: false,
+                source: 'supabase_rest',
+                error: 'Cliente Supabase no inicializado. Verifica SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en cPanel/.env.',
+                diagnostics
+            });
+            return;
+        }
+        try {
+            const { data, error } = await supabase_1.supabase
+                .from('visits')
+                .select('total_visits')
+                .eq('id', 1)
+                .maybeSingle();
+            if (error) {
+                res.status(500).json({
+                    success: false,
+                    source: 'supabase_rest',
+                    error: error.message,
+                    code: error.code || null,
+                    details: error.details || null,
+                    hint: error.hint || null,
+                    diagnostics
+                });
+                return;
+            }
+            res.status(200).json({
+                success: true,
+                source: 'supabase_rest',
+                total_visits: data ? Number(data.total_visits) : null,
+                rowFound: Boolean(data),
+                diagnostics
+            });
+        }
+        catch (err) {
+            res.status(500).json({
+                success: false,
+                source: 'supabase_rest',
+                error: err.message || 'Error inesperado al consultar Supabase REST API',
+                diagnostics
+            });
+        }
+    });
+    // 7. Montar Rutas API
     app.use('/api', routes_1.default);
-    // 7. Ruta raíz de bienvenida y estado
+    // 8. Ruta raíz de bienvenida y estado (Por si se accede al dominio principal sin /api)
     app.get('/', (req, res) => {
         res.json({
             name: 'Venfidata API (Venezuela + Finanzas)',
@@ -61,14 +132,14 @@ const createApp = () => {
             health: '/api/health'
         });
     });
-    // 8. Manejador de rutas no encontradas (404)
+    // 9. Manejador de rutas no encontradas (404)
     app.use((req, res) => {
         res.status(404).json({
             success: false,
             message: `Ruta no encontrada: ${req.method} ${req.originalUrl}`
         });
     });
-    // 9. Manejador global de errores (500)
+    // 10. Manejador global de errores (500)
     app.use((err, req, res, next) => {
         console.error('[Venfidata API Error]:', err.stack || err.message || err);
         const statusCode = err.status || err.statusCode || 500;

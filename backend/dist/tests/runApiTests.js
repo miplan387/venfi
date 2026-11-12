@@ -335,6 +335,28 @@ const runTests = async () => {
             headers: { 'x-admin-key': 'venfi-admin-2026' }
         });
         assertTest('PUT /api/settings/payments/:key -> Actualización administrativa de configuración de pagos', updateSettingsRes.status === 200 && updateSettingsRes.data.success === true);
+        // 21. Contador de Visitas Persistente en Base de Datos (GET /api/visits)
+        const initialVisitsRes = await client.get('/api/visits', {
+            headers: { 'x-visitor-id': 'test_visitor_audit' }
+        });
+        const initialTotal = initialVisitsRes.data?.data?.totalVisits || 0;
+        assertTest('GET /api/visits -> Obtención de estadísticas persistentes de visitas', initialVisitsRes.status === 200 && typeof initialTotal === 'number');
+        // 22. Registro e Incremento Acumulativo de Visitas (POST /api/visits/track)
+        const trackVisitRes = await client.post('/api/visits/track', {
+            visitorId: 'test_visitor_new_session'
+        }, {
+            headers: { 'x-visitor-id': 'test_visitor_new_session' }
+        });
+        const incrementedTotal = trackVisitRes.data?.data?.totalVisits || 0;
+        assertTest('POST /api/visits/track -> Incremento persistente en PostgreSQL (total_visits + 1)', trackVisitRes.status === 200 && incrementedTotal === initialTotal + 1, `Esperado: ${initialTotal + 1}, Recibido: ${incrementedTotal}`);
+        // 23. Verificación de Persistencia tras consulta posterior (GET /api/visits)
+        const verifyVisitsRes = await client.get('/api/visits');
+        assertTest('GET /api/visits -> Confirmación de valor persistido en DB tras incremento', verifyVisitsRes.status === 200 && verifyVisitsRes.data?.data?.totalVisits === incrementedTotal);
+        // 24. Heartbeat de Sesión Activa (POST /api/visits/heartbeat)
+        const heartbeatRes = await client.post('/api/visits/heartbeat', {
+            visitorId: 'test_visitor_heartbeat'
+        });
+        assertTest('POST /api/visits/heartbeat -> Registro de actividad en tiempo real', heartbeatRes.status === 200 && heartbeatRes.data?.data?.activeUsers >= 1);
         console.log('\n📊 ==============================================================');
         console.log(`📊 RESULTADO FINAL DE PRUEBAS: ${passedTests} de ${totalTests} APROBADAS (${Math.round((passedTests / totalTests) * 100)}%)`);
         console.log('📊 ==============================================================\n');

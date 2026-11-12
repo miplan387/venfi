@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS ranking (
     slogan VARCHAR(255) NOT NULL,
     category VARCHAR(100) DEFAULT 'General',
     avatar VARCHAR(20) DEFAULT '🚀',
-    tier VARCHAR(20) NOT NULL CHECK (tier IN ('gold', 'silver', 'dark')),
+    tier VARCHAR(20) NOT NULL CHECK (tier IN ('gold', 'silver', 'bronze', 'dark')),
     amount_paid NUMERIC(10, 2) DEFAULT 0.00,
     start_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     end_time TIMESTAMPTZ,

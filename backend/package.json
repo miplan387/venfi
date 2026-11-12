@@ -5,14 +5,14 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "tsc && cp src/database/*.sql dist/database/ 2>/dev/null || true",
     "start": "node dist/server.js",
     "test": "node --test dist/tests/*.js || ts-node src/tests/runApiTests.ts",
     "test:api": "ts-node src/tests/runApiTests.ts",
     "seed": "ts-node src/database/seed.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.1",
+    "@supabase/supabase-js": "^2.119.0",
     "axios": "^1.8.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
