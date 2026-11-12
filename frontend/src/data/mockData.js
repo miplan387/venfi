@@ -354,7 +354,7 @@ export const initialNews = [
 ];
 
 export const fomoNotifications = [
-  { user: 'Marcos D.', action: 'acaba de pautar por $15', target: 'Puesto #1 VIP', time: 'Hace 2 min' },
+  { user: 'Marcos D.', action: 'acaba de pautar en el Top 10', target: 'Puesto #1 VIP', time: 'Hace 2 min' },
   { user: 'Inversiones Ávila', action: 'renovó su anuncio por 24h', target: 'Puesto #2', time: 'Hace 5 min' },
   { user: 'TiendaTecno CCS', action: 'subió al ranking con $10', target: 'Puesto #3', time: 'Hace 11 min' },
   { user: 'Elena G.', action: 'adquirió un slot publicitario', target: 'Puesto #5', time: 'Hace 18 min' },

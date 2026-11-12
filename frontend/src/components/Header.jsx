@@ -352,7 +352,7 @@ export const Header = ({
             style={{ fontSize: '0.85rem', padding: '0.55rem 1rem' }}
           >
             <Flame size={16} />
-            <span>Pautar $15</span>
+            <span>Pautar</span>
           </button>
 
           {/* Botón Billetera */}
@@ -399,6 +399,13 @@ export const Header = ({
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <a 
+              href="#noticias" 
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
+            >
+              📰 Noticias Económicas
+            </a>
+            <a 
               href="#ranking" 
               onClick={() => setMobileMenuOpen(false)}
               style={{ color: 'var(--color-gold)', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 700 }}
@@ -410,21 +417,35 @@ export const Header = ({
               onClick={() => setMobileMenuOpen(false)}
               style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
             >
-              Monitor de Tasas (BCV / Euro / USDT)
+              📈 Monitor de Tasas (BCV / Euro / USDT)
             </a>
             <a 
               href="#convertidor" 
               onClick={() => setMobileMenuOpen(false)}
               style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
             >
-              Convertidor de Divisas
+              🧮 Convertidor de Divisas
             </a>
             <a 
               href="#remesas" 
               onClick={() => setMobileMenuOpen(false)}
               style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
             >
-              Comparador de Remesas
+              💸 Comparador de Remesas
+            </a>
+            <a 
+              href="#petroleo" 
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
+            >
+              🛢️ Petróleo Brent & Merey
+            </a>
+            <a 
+              href="#oro" 
+              onClick={() => setMobileMenuOpen(false)}
+              style={{ color: '#ffffff', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 600 }}
+            >
+              🥇 Precio del Oro en Vivo
             </a>
           </nav>
         </div>

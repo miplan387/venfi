@@ -34,13 +34,19 @@ class RankingService {
         try {
             let pricingRows = [];
             if (supabase_1.supabase) {
-                const { data } = await supabase_1.supabase
+                const { data, error } = await supabase_1.supabase
                     .from('zone_pricing')
                     .select('position, tier, price_usd, duration_hours')
                     .eq('zone_key', normalizedZone)
                     .eq('is_active', true);
-                if (data && data.length > 0)
+                if (!error && data && data.length > 0) {
                     pricingRows = data;
+                }
+                else {
+                    // Fallback a memoria si la tabla está vacía o no existe aún
+                    const store = db_1.db.getInMemoryStore();
+                    pricingRows = (store.zone_pricing || []).filter((p) => p.zone_key === normalizedZone && p.is_active !== false);
+                }
             }
             else if (db_1.db.isPostgresActive) {
                 const res = await db_1.db.query('SELECT position, tier, price_usd, duration_hours FROM zone_pricing WHERE zone_key = $1 AND is_active = TRUE', [normalizedZone]);
@@ -53,12 +59,25 @@ class RankingService {
             }
             return rows.map((r) => {
                 const p = pricingRows.find((pz) => Number(pz.position) === Number(r.position));
-                const defaultPrice = Number(r.position) === 1 ? 10 : Number(r.position) <= 3 ? 6 : 4;
+                const defaultPrice = Number(r.position) === 1 ? 10.00 : Number(r.position) <= 3 ? 6.00 : 4.00;
+                const currentPrice = p && p.price_usd !== undefined && p.price_usd !== null
+                    ? Number(p.price_usd)
+                    : (r.price_usd !== undefined && r.price_usd !== null ? Number(r.price_usd) : defaultPrice);
+                const currentDuration = p && p.duration_hours
+                    ? Number(p.duration_hours)
+                    : (r.duration_hours ? Number(r.duration_hours) : 24);
+                // Si es una tarjeta vacía / espacio disponible, asegurar slogan dinámico con precio y duración
+                let slogan = r.slogan;
+                const isAvailableSlot = !r.user_id && (!r.amount_paid || Number(r.amount_paid) === 0 || (r.business_name && r.business_name.includes('Espacio Publicitario Disponible')));
+                if (isAvailableSlot || (slogan && slogan.includes('disponible por $'))) {
+                    slogan = `¡Sé el primero en posicionar tu marca en ${normalizedZone.toUpperCase()}! Posición #${r.position} disponible por $${currentPrice.toFixed(2)}.`;
+                }
                 return {
                     ...r,
                     position: Number(r.position),
-                    price_usd: p ? Number(p.price_usd) : (r.price_usd !== undefined && r.price_usd !== null ? Number(r.price_usd) : defaultPrice),
-                    duration_hours: p ? Number(p.duration_hours || 24) : Number(r.duration_hours || 24)
+                    slogan,
+                    price_usd: currentPrice,
+                    duration_hours: currentDuration
                 };
             });
         }

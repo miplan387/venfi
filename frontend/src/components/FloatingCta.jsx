@@ -25,7 +25,7 @@ export const FloatingCta = ({ onOpenAdvertise }) => {
         }}
       >
         <Flame size={22} className="animate-bounce" />
-        <span>¡OCUPA EL #1 POR $15!</span>
+        <span>¡OCUPA EL PUESTO #1!</span>
         <Sparkles size={18} />
       </button>
     </div>

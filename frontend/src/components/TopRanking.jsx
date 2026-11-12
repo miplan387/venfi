@@ -20,20 +20,24 @@ import { apiUrl } from '../config/api';
 // Función auxiliar para normalizar los campos de los slots
 const normalizeSlot = (s) => {
   if (!s) return null;
+  const duration = Number(s.duration_hours || s.durationHours || s.expiresInHours || 24);
+  const price = s.price_usd !== undefined && s.price_usd !== null ? Number(s.price_usd) : undefined;
   return {
     id: s.id,
-    position: s.position,
+    position: Number(s.position),
     businessName: s.businessName || s.business_name || 'Espacio Publicitario Disponible ✨',
     slogan: s.slogan || '',
     category: s.category || 'General',
-    avatar: s.avatar || (s.position === 1 ? '👑' : s.position === 2 ? '🥈' : s.position === 3 ? '🥉' : '🚀'),
+    avatar: s.avatar || (Number(s.position) === 1 ? '👑' : Number(s.position) === 2 ? '🥈' : Number(s.position) === 3 ? '🥉' : '🚀'),
     url: s.url || s.target_url || s.targetUrl || '#',
     clicks: s.clicks ?? s.clicks_received ?? 0,
     impressions: s.impressions ?? s.views_received ?? 0,
-    tier: s.tier || (s.position === 1 ? 'gold' : s.position <= 3 ? 'silver' : 'dark'),
+    tier: s.tier || (Number(s.position) === 1 ? 'gold' : Number(s.position) <= 3 ? 'silver' : 'dark'),
     amountPaid: Number(s.amountPaid ?? s.amount_paid ?? 0),
     verified: Boolean(s.verified || (Number(s.amount_paid || s.amountPaid || 0) > 0)),
-    expiresInHours: s.expiresInHours || 24,
+    expiresInHours: duration,
+    duration_hours: duration,
+    price_usd: price,
     tags: s.tags || ['Venezuela', 'Publicidad'],
     zoneKey: s.zone_key || s.zoneKey || 'nacional'
   };
@@ -137,6 +141,18 @@ export const TopRanking = ({
     if (pos === 1) return 10;
     if (pos === 2 || pos === 3) return 6;
     return 4;
+  };
+
+  const getDurationForPosition = (pos) => {
+    const item = zonePricingList.find(p => Number(p.position) === Number(pos));
+    if (item && item.duration_hours) {
+      return Number(item.duration_hours);
+    }
+    const slot = rankingSlots.find(s => Number(s.position) === Number(pos));
+    if (slot && (slot.duration_hours || slot.durationHours)) {
+      return Number(slot.duration_hours || slot.durationHours);
+    }
+    return 24;
   };
 
   const pricePos1 = getPriceForPosition(1);
@@ -424,7 +440,7 @@ export const TopRanking = ({
                     paddingTop: '0.85rem',
                     borderTop: '1px solid var(--border-subtle)'
                   }}>
-                    <span>Expira en: ~{slot1.expiresInHours} horas</span>
+                    <span>Caduca en: ~{getDurationForPosition(1)} horas</span>
                     <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Inversión: ${pricePos1}.00 USDT</span>
                   </div>
                 </div>
@@ -510,8 +526,10 @@ export const TopRanking = ({
                   paddingTop: '1rem',
                   borderTop: '1px solid var(--border-subtle)'
                 }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <span className="font-mono" style={{ fontWeight: 700, color: '#ffffff' }}>{slot.clicks.toLocaleString()}</span> clics recibidos
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span><span className="font-mono" style={{ fontWeight: 700, color: '#ffffff' }}>{slot.clicks.toLocaleString()}</span> clics</span>
+                    <span>•</span>
+                    <span>⏱️ ~{getDurationForPosition(slot.position)}h</span>
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -557,7 +575,7 @@ export const TopRanking = ({
                 <Award size={18} color="var(--color-primary)" /> Puestos del #4 al #10
               </h3>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Tarifa estándar: ${getPriceForPosition(4).toFixed(2)} / día
+                Tarifa estándar: ${getPriceForPosition(4).toFixed(2)} / {getDurationForPosition(4)}h
               </span>
             </div>
 

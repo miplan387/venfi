@@ -64,7 +64,7 @@ export const AdvertiseModal = ({
   const [dynamicPricing, setDynamicPricing] = useState([]);
   const [prices, setPrices] = useState(
     isNational 
-      ? { tier1: 15.00, tier2: 10.00, tier3: 5.00, durationHours: 24 }
+      ? { tier1: 10.00, tier2: 6.00, tier3: 4.00, durationHours: 24 }
       : { tier1: 10.00, tier2: 6.00, tier3: 4.00, durationHours: 24 }
   );
 
@@ -81,9 +81,9 @@ export const AdvertiseModal = ({
             const p2 = json.data.find(p => p.position === 2) || json.data.find(p => p.position === 3);
             const p3 = json.data.find(p => p.position >= 4) || json.data.find(p => p.position === 3);
             setPrices({
-              tier1: p1 ? Number(p1.price_usd) : (isNational ? 15.00 : 10.00),
-              tier2: p2 ? Number(p2.price_usd) : (isNational ? 10.00 : 6.00),
-              tier3: p3 ? Number(p3.price_usd) : (isNational ? 5.00 : 4.00),
+              tier1: p1 ? Number(p1.price_usd) : 10.00,
+              tier2: p2 ? Number(p2.price_usd) : 6.00,
+              tier3: p3 ? Number(p3.price_usd) : 4.00,
               durationHours: p1 ? Number(p1.duration_hours || 24) : 24
             });
           }
@@ -750,9 +750,14 @@ export const AdvertiseModal = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Crown size={24} color="var(--color-gold)" />
                     <div>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
-                        PUESTO #1 VIP SUPREMO
-                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
+                          PUESTO #1 VIP SUPREMO
+                        </h4>
+                        <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(251, 191, 36, 0.2)', color: 'var(--color-gold)', fontWeight: 700 }}>
+                          ⏱️ {getTierDuration(1)}h
+                        </span>
+                      </div>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                         Tarjeta dorada gigante en cabecera + Badge VIP + 5x más clics
                       </p>
@@ -780,9 +785,14 @@ export const AdvertiseModal = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Sparkles size={22} color="#cbd5e1" />
                     <div>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
-                        {isNational ? 'PUESTO #2 o #3 SILVER' : 'PUESTO #2 SILVER'}
-                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
+                          {isNational ? 'PUESTO #2 o #3 SILVER' : 'PUESTO #2 SILVER'}
+                        </h4>
+                        <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(203, 213, 225, 0.2)', color: '#cbd5e1', fontWeight: 700 }}>
+                          ⏱️ {getTierDuration(2)}h
+                        </span>
+                      </div>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                         Tarjeta plateada destacada + Badge Silver
                       </p>
@@ -810,9 +820,14 @@ export const AdvertiseModal = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <ShieldCheck size={22} color="var(--color-primary)" />
                     <div>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
-                        {isNational ? 'PUESTO DEL #4 AL #10' : 'PUESTO #3 BRONZE'}
-                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>
+                          {isNational ? 'PUESTO DEL #4 AL #10' : 'PUESTO #3 BRONZE'}
+                        </h4>
+                        <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(0, 245, 155, 0.2)', color: 'var(--color-primary)', fontWeight: 700 }}>
+                          ⏱️ {getTierDuration(3)}h
+                        </span>
+                      </div>
                       <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                         {isNational ? 'Slot en el top oficial con tracking de clics' : 'Slot en el Top 3 local con tracking de clics'}
                       </p>
@@ -1702,7 +1717,7 @@ export const AdvertiseModal = ({
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
                 <span style={{ color: '#ffffff', fontWeight: 700 }}>Duración:</span>
-                <span style={{ color: 'var(--color-primary)' }}>24 Horas Activas</span>
+                <span style={{ color: 'var(--color-primary)' }}>{getTierDuration(formData.selectedTier)} Horas Activas</span>
               </div>
             </div>
 

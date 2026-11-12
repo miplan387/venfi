@@ -245,7 +245,7 @@ export const Dashboard = ({ onBackToPortal, onOpenNotifications }) => {
               style={{ fontSize: '0.88rem', padding: '0.6rem 1.25rem' }}
             >
               <Flame size={16} />
-              <span>Extender Pauta $15</span>
+              <span>Extender Pauta</span>
             </button>
           </div>
         </div>

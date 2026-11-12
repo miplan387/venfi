@@ -1699,7 +1699,11 @@ export const AdminCards = ({ onBackToPortal }) => {
 
                   <button
                     type="button"
-                    onClick={() => fetchPricing()}
+                    onClick={async () => {
+                      await fetchPricing();
+                      await fetchControlCenterData();
+                      showNotification('Matriz de tarifas y Centro de Control actualizados.');
+                    }}
                     title="Recargar tabla de tarifas"
                     style={{
                       background: 'rgba(255, 255, 255, 0.05)',

@@ -96,7 +96,7 @@ export const Footer = ({ onOpenTerms, onOpenPrivacy, onOpenAdvertise, onOpenAdmi
                   cursor: 'pointer'
                 }}
               >
-                🔥 Ocupar Puesto #1 ($15/día)
+                🔥 Ocupar Puesto #1 VIP
               </button>
               <button
                 onClick={onOpenTerms}
