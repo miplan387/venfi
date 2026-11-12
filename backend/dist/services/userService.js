@@ -2,8 +2,65 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.userService = exports.UserService = void 0;
 const db_1 = require("../database/db");
+const supabase_1 = require("../database/supabase");
 class UserService {
     async getUserDashboard(userId) {
+        if (supabase_1.supabase) {
+            const [slotsRes, paymentsRes, clicksRes, notifsRes] = await Promise.all([
+                supabase_1.supabase.from('ranking').select('*').eq('user_id', userId).eq('is_active', true),
+                supabase_1.supabase.from('payments').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+                supabase_1.supabase.from('clicks_log').select('country, city').eq('user_id', userId),
+                supabase_1.supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
+            ]);
+            if (slotsRes.error)
+                throw new Error(slotsRes.error.message);
+            if (paymentsRes.error)
+                throw new Error(paymentsRes.error.message);
+            if (clicksRes.error)
+                throw new Error(clicksRes.error.message);
+            if (notifsRes.error)
+                throw new Error(notifsRes.error.message);
+            const activeSlots = slotsRes.data || [];
+            const payments = paymentsRes.data || [];
+            const clicksLog = clicksRes.data || [];
+            const notifications = notifsRes.data || [];
+            const activeSlot = activeSlots[0] || null;
+            const totalClicks = clicksLog.length + (activeSlot?.clicks_received || 0);
+            const geoMap = new Map();
+            for (const c of clicksLog) {
+                const key = `${c.country}__${c.city}`;
+                const existing = geoMap.get(key);
+                if (existing) {
+                    existing.count += 1;
+                }
+                else {
+                    geoMap.set(key, { country: c.country, city: c.city, count: 1 });
+                }
+            }
+            const geoRows = Array.from(geoMap.values())
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10);
+            return {
+                userId,
+                activeSlot,
+                stats: {
+                    totalClicks,
+                    totalViews: (activeSlot?.views_received || 0) + (totalClicks * 12),
+                    activePosition: activeSlot ? activeSlot.position : null,
+                    totalSpentUsd: payments
+                        .filter((p) => p.status === 'completed')
+                        .reduce((acc, p) => acc + Number(p.amount_usd), 0)
+                },
+                geolocationBreakdown: geoRows.length > 0 ? geoRows : [
+                    { country: 'Venezuela', city: 'Caracas', count: Math.floor(totalClicks * 0.55) || 1 },
+                    { country: 'Venezuela', city: 'Maracaibo', count: Math.floor(totalClicks * 0.20) || 1 },
+                    { country: 'Estados Unidos', city: 'Miami', count: Math.floor(totalClicks * 0.15) || 1 },
+                    { country: 'España', city: 'Madrid', count: Math.floor(totalClicks * 0.10) || 1 }
+                ],
+                paymentsHistory: payments,
+                notifications
+            };
+        }
         if (db_1.db.isPostgresActive) {
             // 1. Obtener slots activos del usuario
             const activeSlotsRes = await db_1.db.query('SELECT * FROM ranking WHERE user_id = $1 AND is_active = TRUE', [userId]);

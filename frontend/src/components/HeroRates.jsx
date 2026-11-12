@@ -11,7 +11,7 @@ import { RateCard } from './RateCard';
 import { RateTrendModal } from './RateTrendModal';
 import Brechas from './Brechas';
 
-export const HeroRates = ({ rates, onSelectRateForConverter }) => {
+export const HeroRates = ({ rates, onSelectRateForConverter, onRefresh }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState('Hace un momento');
 
@@ -27,12 +27,18 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
     return () => window.removeEventListener('close-trend-modal', handleClose);
   }, []);
 
-  const handleManualRefresh = () => {
+  const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      }
       setLastRefreshed('Recién actualizado');
-    }, 800);
+    } catch {
+      setLastRefreshed('Error al sincronizar');
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 800);
+    }
   };
 
   const handleOpenTrendModal = (rateKey, item) => {
@@ -42,8 +48,8 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
   };
 
   // Tasas de referencia para indicadores
-  const bcvRate = rates?.bcv?.rate || 787.52;
-  const usdtRate = rates?.usdtBinance?.rate || 933.15;
+  const bcvRate = rates?.bcv?.rate || 904.45;
+  const usdtRate = rates?.usdtBinance?.rate || 1067.16;
   const gapBs = Math.abs(usdtRate - bcvRate).toFixed(2);
   const gapPercent = (((usdtRate - bcvRate) / bcvRate) * 100).toFixed(2);
 
@@ -127,7 +133,7 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
         }}>
           {/* TARJETA 1: DÓLAR BCV */}
           <RateCard 
-            item={rates?.bcv || { name: 'Dólar BCV', rate: 787.52, change: '+0.48%', direction: 'up', source: 'Banco Central de Venezuela' }}
+            item={rates?.bcv || { name: 'Dólar BCV', rate: 904.45, change: '+0.48%', direction: 'up', source: 'Banco Central de Venezuela' }}
             rateKey="bcv"
             typeLabel="OFICIAL BCV"
             currencySuffix="/ USD"
@@ -140,7 +146,7 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
 
           {/* TARJETA 2: EURO (€) BCV */}
           <RateCard 
-            item={rates?.euroBcv || { name: 'Euro (€) BCV', rate: 919.15, change: '+0.34%', direction: 'up', source: 'Banco Central de Venezuela' }}
+            item={rates?.euroBcv || { name: 'Euro (€) BCV', rate: 1003.49, change: '+0.34%', direction: 'up', source: 'Banco Central de Venezuela' }}
             rateKey="euro"
             typeLabel="OFICIAL BCV"
             currencySuffix="/ EUR"
@@ -153,7 +159,7 @@ export const HeroRates = ({ rates, onSelectRateForConverter }) => {
 
           {/* TARJETA 3: BINANCE P2P USDT */}
           <RateCard 
-            item={rates?.usdtBinance || { name: 'Binance USDT', rate: 933.15, change: '+0.57%', direction: 'up', source: 'Binance P2P Market' }}
+            item={rates?.usdtBinance || { name: 'Binance USDT', rate: 1067.16, change: '+0.57%', direction: 'up', source: 'Binance P2P Market' }}
             rateKey="usdt"
             typeLabel="CRIPTO & P2P"
             currencySuffix="/ USDT"

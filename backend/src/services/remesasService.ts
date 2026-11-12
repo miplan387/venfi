@@ -1,4 +1,5 @@
 import { db, pool } from '../database/db';
+import { supabase } from '../database/supabase';
 import { ratesService } from './ratesService';
 
 export interface RemittanceProvider {
@@ -82,6 +83,16 @@ export class RemesasService {
    * Obtiene todos los proveedores configurados (Admin)
    */
   public async getAllProviders(): Promise<RemittanceProvider[]> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('remittance_providers')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('id', { ascending: true });
+      if (error) throw new Error(error.message);
+      return (data || []).map(this.normalizeProviderRow);
+    }
+
     if (db.isPostgresActive) {
       const result = await pool.query(
         'SELECT * FROM remittance_providers ORDER BY sort_order ASC, id ASC'
@@ -97,6 +108,17 @@ export class RemesasService {
    * Obtiene solo los proveedores activos
    */
   public async getActiveProviders(): Promise<RemittanceProvider[]> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('remittance_providers')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('id', { ascending: true });
+      if (error) throw new Error(error.message);
+      return (data || []).map(this.normalizeProviderRow);
+    }
+
     if (db.isPostgresActive) {
       const result = await pool.query(
         'SELECT * FROM remittance_providers WHERE is_active = true ORDER BY sort_order ASC, id ASC'
@@ -114,6 +136,16 @@ export class RemesasService {
    * Obtiene un proveedor por su key única
    */
   public async getProviderByKey(key: string): Promise<RemittanceProvider | null> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('remittance_providers')
+        .select('*')
+        .eq('key', key)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? this.normalizeProviderRow(data) : null;
+    }
+
     if (db.isPostgresActive) {
       const result = await pool.query(
         'SELECT * FROM remittance_providers WHERE key = $1',
@@ -140,6 +172,39 @@ export class RemesasService {
     const buyRate = Number(data.buy_rate ?? 0);
     const sellRate = Number(data.sell_rate ?? data.rate_usd_bs ?? 0);
     const marketType = data.market_type === 'official' ? 'official' : 'parallel';
+
+    if (supabase) {
+      const { data: created, error } = await supabase
+        .from('remittance_providers')
+        .insert([{
+          key: data.key,
+          name: data.name,
+          icon: data.icon || '🏢',
+          description: data.description || '',
+          countries: data.countries || [],
+          rate_multiplier: sellMultiplier,
+          rate_usd_bs: sellRate,
+          buy_rate_multiplier: buyMultiplier,
+          sell_rate_multiplier: sellMultiplier,
+          buy_rate: buyRate,
+          sell_rate: sellRate,
+          commission_percent: Number(data.commission_percent) || 0,
+          commission_fixed_usd: Number(data.commission_fixed_usd) || 0,
+          delivery_time: data.delivery_time || '24 horas',
+          payment_methods: data.payment_methods || [],
+          delivery_methods: data.delivery_methods || [],
+          rating: Number(data.rating) || 4.5,
+          badge: data.badge || '',
+          url: data.url || '',
+          market_type: marketType,
+          sort_order: Number(data.sort_order) || 0,
+          is_active: data.is_active !== undefined ? data.is_active : true
+        }])
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return this.normalizeProviderRow(created);
+    }
 
     if (db.isPostgresActive) {
       const result = await pool.query(
@@ -215,6 +280,42 @@ export class RemesasService {
    * Actualiza un proveedor existente
    */
   public async updateProvider(key: string, data: Partial<RemittanceProvider>): Promise<RemittanceProvider | null> {
+    if (supabase) {
+      const allowedFields = [
+        'name', 'icon', 'description', 'countries',
+        'rate_multiplier', 'rate_usd_bs',
+        'buy_rate_multiplier', 'sell_rate_multiplier',
+        'buy_rate', 'sell_rate', 'market_type',
+        'commission_percent', 'commission_fixed_usd',
+        'delivery_time', 'payment_methods',
+        'delivery_methods', 'rating', 'badge', 'url',
+        'sort_order', 'is_active'
+      ];
+      const updatePayload: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if ((data as any)[field] !== undefined) {
+          let val = (data as any)[field];
+          if (['countries', 'payment_methods', 'delivery_methods'].includes(field) && typeof val === 'string') {
+            try { val = JSON.parse(val); } catch (_) { /* keep string */ }
+          }
+          updatePayload[field] = val;
+        }
+      }
+      if (Object.keys(updatePayload).length === 0) {
+        throw new Error('No se proporcionaron campos para actualizar');
+      }
+      updatePayload.updated_at = new Date().toISOString();
+
+      const { data: updated, error } = await supabase
+        .from('remittance_providers')
+        .update(updatePayload)
+        .eq('key', key)
+        .select()
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return updated ? this.normalizeProviderRow(updated) : null;
+    }
+
     if (db.isPostgresActive) {
       const updates: string[] = [];
       const values: any[] = [];
@@ -276,6 +377,17 @@ export class RemesasService {
     if (!current) throw new Error('Proveedor de remesas no encontrado');
     const newStatus = !current.is_active;
 
+    if (supabase) {
+      const { data: updated, error } = await supabase
+        .from('remittance_providers')
+        .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+        .eq('key', key)
+        .select()
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return updated ? this.normalizeProviderRow(updated) : null;
+    }
+
     if (db.isPostgresActive) {
       const result = await pool.query(
         'UPDATE remittance_providers SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2 RETURNING *',
@@ -298,6 +410,17 @@ export class RemesasService {
    * Elimina un proveedor
    */
   public async deleteProvider(key: string): Promise<{ key: string } | null> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('remittance_providers')
+        .delete()
+        .eq('key', key)
+        .select('key')
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data || null;
+    }
+
     if (db.isPostgresActive) {
       const result = await pool.query(
         'DELETE FROM remittance_providers WHERE key = $1 RETURNING key',

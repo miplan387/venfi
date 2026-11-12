@@ -59,16 +59,53 @@ export const AdvertiseModal = ({
   const [methodConfig, setMethodConfig] = useState(null);
   const [loadingMethods, setLoadingMethods] = useState(true);
 
-  // Precios dinámicos según zona (Nacional o Ciudades)
+  // Precios y Duración dinámicos según zona (cargados desde /api/zones/:key/pricing)
   const isNational = (selectedZone || 'nacional').toLowerCase() === 'nacional';
-  const prices = isNational 
-    ? { tier1: 15.00, tier2: 10.00, tier3: 5.00 }
-    : { tier1: 10.00, tier2: 6.00, tier3: 4.00 };
+  const [dynamicPricing, setDynamicPricing] = useState([]);
+  const [prices, setPrices] = useState(
+    isNational 
+      ? { tier1: 15.00, tier2: 10.00, tier3: 5.00, durationHours: 24 }
+      : { tier1: 10.00, tier2: 6.00, tier3: 4.00, durationHours: 24 }
+  );
+
+  useEffect(() => {
+    const fetchZonePricing = async () => {
+      try {
+        const zoneKey = (selectedZone || 'nacional').toLowerCase();
+        const res = await fetch(apiUrl(`/api/zones/${zoneKey}/pricing`));
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setDynamicPricing(json.data);
+            const p1 = json.data.find(p => p.position === 1);
+            const p2 = json.data.find(p => p.position === 2) || json.data.find(p => p.position === 3);
+            const p3 = json.data.find(p => p.position >= 4) || json.data.find(p => p.position === 3);
+            setPrices({
+              tier1: p1 ? Number(p1.price_usd) : (isNational ? 15.00 : 10.00),
+              tier2: p2 ? Number(p2.price_usd) : (isNational ? 10.00 : 6.00),
+              tier3: p3 ? Number(p3.price_usd) : (isNational ? 5.00 : 4.00),
+              durationHours: p1 ? Number(p1.duration_hours || 24) : 24
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Error al cargar precios dinámicos de la zona:', err);
+      }
+    };
+
+    fetchZonePricing();
+  }, [selectedZone, isOpen]);
 
   const getTierPrice = (tier) => {
     if (tier === 1) return prices.tier1;
     if (tier === 2) return prices.tier2;
     return prices.tier3;
+  };
+
+  const getTierDuration = (tier) => {
+    const targetPos = getTargetPosition(tier);
+    const item = dynamicPricing.find(p => p.position === targetPos);
+    return item ? Number(item.duration_hours || 24) : (prices.durationHours || 24);
   };
 
   const getTargetPosition = (tier) => {
@@ -162,7 +199,7 @@ export const AdvertiseModal = ({
             body: JSON.stringify({
               position: targetPosition,
               amountUsd,
-              durationHours: 24,
+              durationHours: getTierDuration(formData.selectedTier),
               businessName: formData.businessName,
               targetUrl,
               slogan: formData.slogan,
@@ -186,7 +223,7 @@ export const AdvertiseModal = ({
             body: JSON.stringify({
               position: targetPosition,
               amountUsd,
-              durationHours: 24,
+              durationHours: getTierDuration(formData.selectedTier),
               businessName: formData.businessName,
               targetUrl,
               slogan: formData.slogan,
@@ -244,7 +281,7 @@ export const AdvertiseModal = ({
           body: JSON.stringify({
             position: targetPosition,
             amountUsd,
-            durationHours: 24,
+            durationHours: getTierDuration(formData.selectedTier),
             businessName: formData.businessName,
             targetUrl,
             slogan: formData.slogan,
@@ -309,7 +346,7 @@ export const AdvertiseModal = ({
           body: JSON.stringify({
             position: assignedPosition,
             amountUsd,
-            durationHours: 24,
+            durationHours: getTierDuration(formData.selectedTier),
             businessName: formData.businessName,
             targetUrl,
             slogan: formData.slogan,
@@ -693,7 +730,7 @@ export const AdvertiseModal = ({
               Elige tu Nivel de Visibilidad
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Selecciona el puesto que deseas ocupar en el Ranking {isNational ? 'Nacional' : `de ${selectedZone.charAt(0).toUpperCase() + selectedZone.slice(1)}`} durante las próximas 24 horas:
+              Selecciona el puesto que deseas ocupar en el Ranking {isNational ? 'Nacional' : `de ${selectedZone.charAt(0).toUpperCase() + selectedZone.slice(1)}`} durante las próximas {getTierDuration(formData.selectedTier)} horas:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -961,11 +998,9 @@ export const AdvertiseModal = ({
                 </div>
 
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>
-                  Merchant ID: <strong style={{ color: '#ffffff' }}>284910482</strong> • Prepay: <span className="font-mono">{paymentOrder?.binancePay?.prepayId || 'BNC_LIVE'}</span>
                   Merchant ID: <strong style={{ color: '#ffffff' }}>{paymentSettings.binance?.merchantId || '284910482'}</strong> • Cuenta: <span style={{ color: '#ffffff' }}>{paymentSettings.binance?.email || 'pagos@venfidata.com'}</span>
                 </div>
                 <div className="font-mono" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-gold)' }}>
-                  Total a Pagar: {formData.selectedTier === 1 ? '15.00' : formData.selectedTier === 2 ? '10.00' : '5.00'} USDT
                   Total a Pagar: {getTierPrice(formData.selectedTier).toFixed(2)} USDT
                 </div>
               </div>
@@ -1033,7 +1068,6 @@ export const AdvertiseModal = ({
                 }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Monto a Transferir:</span>
                   <span className="font-mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-gold)' }}>
-                    ${formData.selectedTier === 1 ? '15.00' : formData.selectedTier === 2 ? '10.00' : '5.00'} USD
                     ${getTierPrice(formData.selectedTier).toFixed(2)} USD
                   </span>
                 </div>
@@ -1088,16 +1122,16 @@ export const AdvertiseModal = ({
                       Monto Exacto a Transferir (Tasa Oficial BCV):
                     </div>
                     <div className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--color-primary)' }}>
-                      Bs. {pagoMovilData?.amountVes ? Number(pagoMovilData.amountVes).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ((formData.selectedTier === 1 ? 15 : formData.selectedTier === 2 ? 10 : 5) * 807.39).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                      Bs. {pagoMovilData?.amountVes ? Number(pagoMovilData.amountVes).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (getTierPrice(formData.selectedTier) * (Number(pagoMovilData?.bcvRate) || 807.39)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      Equivalente a ${formData.selectedTier === 1 ? '15.00' : formData.selectedTier === 2 ? '10.00' : '5.00'} USD • Tasa: {pagoMovilData?.bcvRate || '807.39'} Bs/USD
+                      Equivalente a ${getTierPrice(formData.selectedTier).toFixed(2)} USD • Tasa: {pagoMovilData?.bcvRate || '807.39'} Bs/USD
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(String(pagoMovilData?.amountVes || ((formData.selectedTier === 1 ? 15 : formData.selectedTier === 2 ? 10 : 5) * 807.39).toFixed(2)), 'amount')}
+                    onClick={() => copyToClipboard(String(pagoMovilData?.amountVes || (getTierPrice(formData.selectedTier) * (Number(pagoMovilData?.bcvRate) || 807.39)).toFixed(2)), 'amount')}
                     className="btn btn-secondary"
                     style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                   >
@@ -1482,7 +1516,7 @@ export const AdvertiseModal = ({
                 }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Monto a Transferir:</span>
                   <span className="font-mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-gold)' }}>
-                    ${formData.selectedTier === 1 ? '15.00' : formData.selectedTier === 2 ? '10.00' : '5.00'} USD
+                    ${getTierPrice(formData.selectedTier).toFixed(2)} USD
                   </span>
                 </div>
 
@@ -1607,7 +1641,7 @@ export const AdvertiseModal = ({
                 <strong style={{ color: '#ffffff' }}>Número de referencia:</strong> {formData.referenceCode}
               </p>
               <p className="text-sm text-gray-300" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.35rem 0' }}>
-                <strong style={{ color: '#ffffff' }}>Monto:</strong> Bs. {(pagoMovilData?.amountVes || ((formData.selectedTier === 1 ? 15 : formData.selectedTier === 2 ? 10 : 5) * 807.39))?.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <strong style={{ color: '#ffffff' }}>Monto:</strong> Bs. {(pagoMovilData?.amountVes || (getTierPrice(formData.selectedTier) * (Number(pagoMovilData?.bcvRate) || 807.39)))?.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className="text-sm text-gray-300" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.35rem 0' }}>
                 <strong style={{ color: '#ffffff' }}>Estado:</strong> <span className="text-yellow-400" style={{ color: 'var(--color-gold)', fontWeight: 700 }}>⏳ Pendiente de verificación</span>

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { config } from '../config/env';
 import { db } from '../database/db';
+import { supabase } from '../database/supabase';
 
 export interface OilPriceItem {
   name: string;
@@ -233,7 +234,19 @@ export class MarketDataService {
     const targetDate = dateStr || new Date().toISOString().split('T')[0];
 
     try {
-      if (db.isPostgresActive) {
+      if (supabase) {
+        await supabase
+          .from('commodity_history')
+          .upsert(
+            {
+              commodity_type: commodityType,
+              price_usd: roundedPrice,
+              recorded_at: targetDate,
+              created_at: new Date().toISOString()
+            },
+            { onConflict: 'commodity_type,recorded_at' }
+          );
+      } else if (db.isPostgresActive) {
         await db.query(
           `INSERT INTO commodity_history (commodity_type, price_usd, recorded_at)
            VALUES ($1, $2, $3)
@@ -289,7 +302,18 @@ export class MarketDataService {
     let rows: { recorded_at: string; price_usd: number }[] = [];
 
     try {
-      if (db.isPostgresActive) {
+      if (supabase) {
+        const { data } = await supabase
+          .from('commodity_history')
+          .select('recorded_at, price_usd')
+          .eq('commodity_type', commodityType)
+          .order('recorded_at', { ascending: false })
+          .limit(days);
+        rows = (data || []).map((r: any) => ({
+          recorded_at: typeof r.recorded_at === 'string' ? r.recorded_at.split('T')[0] : new Date(r.recorded_at).toISOString().split('T')[0],
+          price_usd: Number(r.price_usd)
+        }));
+      } else if (db.isPostgresActive) {
         const res = await db.query(
           `SELECT recorded_at::text as recorded_at, price_usd 
            FROM commodity_history 

@@ -7,11 +7,13 @@ exports.createApp = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
+const axios_1 = __importDefault(require("axios"));
 const routes_1 = __importDefault(require("./routes"));
 const swagger_1 = require("./docs/swagger");
 const rateLimiter_1 = require("./middleware/rateLimiter");
 const env_1 = require("./config/env");
 const supabase_1 = require("./database/supabase");
+const zonesService_1 = require("./services/zonesService");
 const createApp = () => {
     const app = (0, express_1.default)();
     // 1. Headers de Seguridad con Helmet (Configuración Compatible con Cross-Origin y SPA)
@@ -56,67 +58,103 @@ const createApp = () => {
     app.get('/api/', (req, res) => {
         res.send('<h1>Venfidata API está en línea</h1>');
     });
-    // Endpoint temporal de diagnóstico de conexión a Supabase REST API (HTTPS / Puerto 443)
-    app.get('/api/db-test', async (req, res) => {
-        let supabaseHost = 'no_configurado';
+    // Diagnóstico directo de conexión saliente hacia DolarAPI (sin caché)
+    app.get('/api/test-rates', async (req, res) => {
+        const startTime = Date.now();
         try {
-            if (process.env.SUPABASE_URL) {
-                supabaseHost = new URL(process.env.SUPABASE_URL).hostname;
-            }
-        }
-        catch (_) {
-            supabaseHost = 'url_invalida';
-        }
-        const diagnostics = {
-            nodeEnv: env_1.config.nodeEnv,
-            isSupabaseConfigured: supabase_1.isSupabaseConfigured,
-            hasSupabaseUrl: Boolean(process.env.SUPABASE_URL),
-            hasSupabaseServiceKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-            supabaseHost
-        };
-        if (!supabase_1.supabase) {
-            res.status(500).json({
-                success: false,
-                source: 'supabase_rest',
-                error: 'Cliente Supabase no inicializado. Verifica SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en cPanel/.env.',
-                diagnostics
+            const response = await axios_1.default.get('https://ve.dolarapi.com/v1/dolares/oficial', {
+                timeout: 6000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'application/json'
+                }
             });
-            return;
-        }
-        try {
-            const { data, error } = await supabase_1.supabase
-                .from('visits')
-                .select('total_visits')
-                .eq('id', 1)
-                .maybeSingle();
-            if (error) {
-                res.status(500).json({
-                    success: false,
-                    source: 'supabase_rest',
-                    error: error.message,
-                    code: error.code || null,
-                    details: error.details || null,
-                    hint: error.hint || null,
-                    diagnostics
-                });
-                return;
-            }
+            const latencyMs = Date.now() - startTime;
             res.status(200).json({
                 success: true,
-                source: 'supabase_rest',
-                total_visits: data ? Number(data.total_visits) : null,
-                rowFound: Boolean(data),
-                diagnostics
+                message: 'Conexión exitosa a DolarAPI oficial',
+                latencyMs,
+                data: response.data
             });
         }
         catch (err) {
+            const latencyMs = Date.now() - startTime;
+            console.error('[test-rates] Error al conectar con DolarAPI:', err.message);
             res.status(500).json({
                 success: false,
-                source: 'supabase_rest',
-                error: err.message || 'Error inesperado al consultar Supabase REST API',
-                diagnostics
+                message: 'Fallo al conectar con DolarAPI oficial',
+                latencyMs,
+                error: {
+                    message: err.message,
+                    code: err.code || null,
+                    status: err.response?.status || null,
+                    statusText: err.response?.statusText || null,
+                    data: err.response?.data || null
+                }
             });
         }
+    });
+    // Diagnóstico directo de la tabla zone_pricing en Supabase REST
+    app.get('/api/test-zone-pricing', async (req, res) => {
+        const startTime = Date.now();
+        try {
+            if (!supabase_1.isSupabaseConfigured || !supabase_1.supabase) {
+                return res.status(200).json({
+                    success: false,
+                    supabaseConfigured: false,
+                    message: 'Supabase no está configurado (variables no presentes o locales)',
+                    env: {
+                        SUPABASE_URL_EXISTS: !!process.env.SUPABASE_URL,
+                        SUPABASE_SERVICE_ROLE_KEY_EXISTS: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+                    }
+                });
+            }
+            console.log('[test-zone-pricing] Consultando Supabase REST para zone_pricing (nacional)...');
+            const { data, error, status, statusText } = await supabase_1.supabase
+                .from('zone_pricing')
+                .select('*')
+                .eq('zone_key', 'nacional');
+            const latencyMs = Date.now() - startTime;
+            if (error) {
+                return res.status(500).json({
+                    success: false,
+                    supabaseConfigured: true,
+                    latencyMs,
+                    httpStatus: status,
+                    statusText,
+                    error: {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    },
+                    diagnosis: error.message.includes('schema cache')
+                        ? 'CRÍTICO: La tabla public.zone_pricing NO EXISTE en la base de datos de Supabase. Debe ejecutarse backend/src/database/crear_tablas_faltantes_supabase.sql en el SQL Editor de Supabase.'
+                        : 'Error devuelto por Supabase REST API.'
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                supabaseConfigured: true,
+                latencyMs,
+                count: (data || []).length,
+                data: data || [],
+                diagnosis: (data || []).length === 0
+                    ? 'La tabla public.zone_pricing existe pero está VACÍA en Supabase.'
+                    : `La tabla public.zone_pricing existe y contiene ${data?.length} tarifas para la zona nacional.`
+            });
+        }
+        catch (err) {
+            return res.status(500).json({
+                success: false,
+                latencyMs: Date.now() - startTime,
+                error: err.message
+            });
+        }
+    });
+    // Ejecución asíncrona no bloqueante de seed para zone_pricing
+    zonesService_1.zonesService.seedZonePricingIfNeeded().catch(err => {
+        console.warn('[Seed Warning]:', err.message);
     });
     // 7. Montar Rutas API
     app.use('/api', routes_1.default);

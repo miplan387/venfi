@@ -1,4 +1,5 @@
 import { db, pool } from '../database/db';
+import { supabase } from '../database/supabase';
 
 export interface PaymentMethodItem {
   id?: number;
@@ -15,6 +16,16 @@ export interface PaymentMethodItem {
 }
 
 export const getAll = async (): Promise<PaymentMethodItem[]> => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
   if (db.isPostgresActive) {
     const result = await pool.query(
       'SELECT * FROM payment_methods ORDER BY sort_order ASC, id ASC'
@@ -27,6 +38,17 @@ export const getAll = async (): Promise<PaymentMethodItem[]> => {
 };
 
 export const getActive = async (): Promise<PaymentMethodItem[]> => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
   if (db.isPostgresActive) {
     const result = await pool.query(
       'SELECT * FROM payment_methods WHERE is_active = true ORDER BY sort_order ASC, id ASC'
@@ -41,6 +63,16 @@ export const getActive = async (): Promise<PaymentMethodItem[]> => {
 };
 
 export const getByKey = async (key: string): Promise<PaymentMethodItem | null> => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('key', key)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  }
+
   if (db.isPostgresActive) {
     const result = await pool.query(
       'SELECT * FROM payment_methods WHERE key = $1',
@@ -63,6 +95,25 @@ export const create = async (data: {
   requires_approval?: boolean;
   sort_order?: number;
 }): Promise<PaymentMethodItem> => {
+  if (supabase) {
+    const { data: created, error } = await supabase
+      .from('payment_methods')
+      .insert([{
+        key: data.key,
+        name: data.name,
+        icon: data.icon || '💳',
+        description: data.description || '',
+        fields: data.fields || {},
+        is_active: data.is_active !== undefined ? data.is_active : true,
+        requires_approval: data.requires_approval !== undefined ? data.requires_approval : false,
+        sort_order: data.sort_order || 0
+      }])
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return created;
+  }
+
   if (db.isPostgresActive) {
     const result = await pool.query(
       `INSERT INTO payment_methods (key, name, icon, description, fields, is_active, requires_approval, sort_order)
@@ -112,6 +163,29 @@ export const update = async (
     sort_order: number;
   }>
 ): Promise<PaymentMethodItem | null> => {
+  if (supabase) {
+    const updatePayload: Record<string, any> = {};
+    const allowedFields = ['name', 'icon', 'description', 'fields', 'is_active', 'requires_approval', 'sort_order'];
+    for (const field of allowedFields) {
+      if ((data as any)[field] !== undefined) {
+        updatePayload[field] = (data as any)[field];
+      }
+    }
+    if (Object.keys(updatePayload).length === 0) {
+      throw new Error('No se proporcionaron campos para actualizar');
+    }
+    updatePayload.updated_at = new Date().toISOString();
+
+    const { data: updated, error } = await supabase
+      .from('payment_methods')
+      .update(updatePayload)
+      .eq('key', key)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return updated || null;
+  }
+
   if (db.isPostgresActive) {
     const updates: string[] = [];
     const values: any[] = [];
@@ -158,6 +232,17 @@ export const toggleActive = async (key: string): Promise<PaymentMethodItem | nul
   if (!current) throw new Error('Método no encontrado');
   const newStatus = !current.is_active;
 
+  if (supabase) {
+    const { data: updated, error } = await supabase
+      .from('payment_methods')
+      .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+      .eq('key', key)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return updated || null;
+  }
+
   if (db.isPostgresActive) {
     const result = await pool.query(
       'UPDATE payment_methods SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2 RETURNING *',
@@ -176,6 +261,17 @@ export const toggleActive = async (key: string): Promise<PaymentMethodItem | nul
 };
 
 export const deleteMethod = async (key: string): Promise<{ key: string } | null> => {
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .delete()
+      .eq('key', key)
+      .select('key')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  }
+
   if (db.isPostgresActive) {
     const result = await pool.query(
       'DELETE FROM payment_methods WHERE key = $1 RETURNING key',

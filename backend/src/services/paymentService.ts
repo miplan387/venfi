@@ -1,4 +1,5 @@
 import { db } from '../database/db';
+import { supabase } from '../database/supabase';
 import { rankingService } from './rankingService';
 import { binancePayService } from './binancePayService';
 import { ratesService } from './ratesService';
@@ -34,19 +35,59 @@ export class PaymentService {
   }) {
     const paymentMethod = data.paymentMethod || 'binance';
     const zoneKey = (data.zoneKey || data.zone || 'nacional').toLowerCase().trim();
-    const duration = data.durationHours || 24;
+    const pricingInfo = await zonesService.getPricingForPosition(zoneKey, data.position);
+    const duration = data.durationHours || pricingInfo.duration_hours || 24;
     const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
     const orderId = `VENFI_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     const zellePaymentId = randomUUID();
     const txHash = data.txHash || data.referenceCode || null;
 
     // Validar precio mínimo según zona y posición requerida
-    const expectedAmount = await zonesService.getPriceForPosition(zoneKey, data.position);
+    const expectedAmount = pricingInfo.price_usd;
     const finalAmount = Math.max(data.amountUsd, expectedAmount);
 
     let paymentRecord: any;
 
-    if (db.isPostgresActive) {
+    if (supabase) {
+      const { data: insertedPayment, error: payError } = await supabase
+        .from('payments')
+        .insert([{
+          id: orderId,
+          user_id: userId || null,
+          amount_usd: finalAmount,
+          position: data.position,
+          duration_hours: duration,
+          status: 'pending',
+          payment_method: paymentMethod,
+          business_name: data.businessName,
+          target_url: data.targetUrl,
+          slogan: data.slogan,
+          category: data.category || 'General',
+          avatar: data.avatar || '🚀',
+          expires_at: expiresAt.toISOString(),
+          zone_key: zoneKey,
+          tx_hash: txHash
+        }])
+        .select()
+        .single();
+      if (payError) throw new Error(payError.message);
+      paymentRecord = insertedPayment;
+
+      if (paymentMethod === 'zelle' || paymentMethod === 'zinli') {
+        const { error: zelleError } = await supabase
+          .from('zelle_payments')
+          .insert([{
+            id: zellePaymentId,
+            user_id: userId || null,
+            order_id: orderId,
+            amount_usd: finalAmount,
+            position: data.position,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          }]);
+        if (zelleError) throw new Error(zelleError.message);
+      }
+    } else if (db.isPostgresActive) {
       const res = await db.query(
         `INSERT INTO payments (id, user_id, amount_usd, position, duration_hours, status, payment_method, business_name, target_url, slogan, category, avatar, expires_at, zone_key, tx_hash)
          VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10, $11, $12, $13, $14)
@@ -217,7 +258,74 @@ export class PaymentService {
 
     let payment: any;
 
-    if (db.isPostgresActive) {
+    if (supabase) {
+      if (orderId) {
+        const { data: exactMatch } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('id', orderId)
+          .maybeSingle();
+        payment = exactMatch;
+
+        if (!payment) {
+          const { data: likeMatches } = await supabase
+            .from('payments')
+            .select('*')
+            .ilike('id', `%${orderId}%`)
+            .limit(1);
+          payment = likeMatches?.[0];
+        }
+      }
+
+      if (!payment) {
+        const { data: latestPending } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        payment = latestPending?.[0];
+      }
+
+      if (payment) {
+        await supabase
+          .from('payments')
+          .update({ status: 'completed', tx_hash: txHash })
+          .eq('id', payment.id);
+
+        await rankingService.placeAdInRanking({
+          userId: payment.user_id,
+          paymentId: payment.id,
+          position: payment.position,
+          businessName: payment.business_name,
+          targetUrl: payment.target_url,
+          slogan: payment.slogan,
+          category: payment.category,
+          avatar: payment.avatar,
+          amountPaid: Number(payment.amount_usd),
+          durationHours: payment.duration_hours,
+          zoneKey: payment.zone_key || 'nacional'
+        });
+
+        if (payment.user_id) {
+          await supabase
+            .from('notifications')
+            .insert([{
+              user_id: payment.user_id,
+              message: `¡Pago verificado! Tu anuncio '${payment.business_name}' ya está en el puesto #${payment.position} del Ranking.`,
+              type: 'payment'
+            }]);
+        }
+
+        return {
+          success: true,
+          message: 'Pago de Binance Pay verificado exitosamente y ranking actualizado.',
+          orderId: payment.id,
+          position: payment.position,
+          businessName: payment.business_name
+        };
+      }
+    } else if (db.isPostgresActive) {
       let res = await db.query(
         'SELECT * FROM payments WHERE id::text = $1 OR id::text LIKE $2 LIMIT 1',
         [orderId, `%${orderId}%`]
@@ -325,6 +433,19 @@ export class PaymentService {
    * Consulta el estado de una orden de pago
    */
   public async getPaymentStatus(orderId: string) {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) {
+        throw new Error('Orden no encontrada');
+      }
+      return data;
+    }
+
     if (db.isPostgresActive) {
       const res = await db.query('SELECT * FROM payments WHERE id::text = $1', [orderId]);
       if (res.rows.length === 0) {
@@ -345,6 +466,29 @@ export class PaymentService {
    * Permite al usuario reportar comprobante y código de referencia Zelle
    */
   public async submitZelleProof(orderId: string, referenceCode: string, proofImageUrl?: string) {
+    if (supabase) {
+      const { error: zelleError } = await supabase
+        .from('zelle_payments')
+        .update({
+          reference_code: referenceCode,
+          proof_image_url: proofImageUrl || null,
+          status: 'pending'
+        })
+        .eq('order_id', orderId);
+      if (zelleError) throw new Error(zelleError.message);
+
+      const { error: payError } = await supabase
+        .from('payments')
+        .update({ status: 'pending', tx_hash: referenceCode })
+        .eq('id', orderId);
+      if (payError) throw new Error(payError.message);
+
+      return {
+        success: true,
+        message: 'Comprobante Zelle registrado exitosamente. Nuestro equipo administrativo verificará la transacción en minutos.'
+      };
+    }
+
     if (db.isPostgresActive) {
       await db.query(
         `UPDATE zelle_payments 
@@ -404,6 +548,45 @@ export class PaymentService {
    * Obtiene la lista de pagos Zelle pendientes de verificación para el panel administrativo
    */
   public async getPendingZellePayments() {
+    if (supabase) {
+      const { data: zelles, error } = await supabase
+        .from('zelle_payments')
+        .select('*')
+        .in('status', ['pending', 'verified'])
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      if (!zelles || zelles.length === 0) return [];
+
+      const orderIds = Array.from(new Set(zelles.map((z: any) => z.order_id).filter(Boolean)));
+      const userIds = Array.from(new Set(zelles.map((z: any) => z.user_id).filter(Boolean)));
+
+      const { data: payments } = orderIds.length
+        ? await supabase.from('payments').select('id, business_name, target_url, slogan, category, avatar').in('id', orderIds)
+        : { data: [] as any[] };
+      const { data: users } = userIds.length
+        ? await supabase.from('users').select('id, email').in('id', userIds)
+        : { data: [] as any[] };
+
+      const paymentMap = new Map((payments || []).map((p: any) => [String(p.id), p]));
+      const userMap = new Map((users || []).map((u: any) => [String(u.id), u]));
+
+      return zelles
+        .filter((z: any) => paymentMap.has(String(z.order_id)))
+        .map((z: any) => {
+          const p = paymentMap.get(String(z.order_id));
+          const u = z.user_id ? userMap.get(String(z.user_id)) : null;
+          return {
+            ...z,
+            business_name: p.business_name,
+            target_url: p.target_url,
+            slogan: p.slogan,
+            category: p.category,
+            avatar: p.avatar,
+            user_email: u?.email || null
+          };
+        });
+    }
+
     if (db.isPostgresActive) {
       const res = await db.query(
         `SELECT z.*, p.business_name, p.target_url, p.slogan, p.category, p.avatar, u.email as user_email
@@ -438,6 +621,72 @@ export class PaymentService {
   public async verifyZellePaymentAdmin(orderId: string, isApproved: boolean, adminNotes?: string) {
     const now = new Date();
     const finalStatus = isApproved ? 'completed' : 'rejected';
+
+    if (supabase) {
+      const { data: payment, error: payFetchErr } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (payFetchErr) throw new Error(payFetchErr.message);
+      if (!payment) {
+        throw new Error('Orden de pago no encontrada');
+      }
+
+      const { error: zelleUpdateErr } = await supabase
+        .from('zelle_payments')
+        .update({
+          status: finalStatus,
+          admin_notes: adminNotes || (isApproved ? 'Aprobado manualmente' : 'Rechazado por fondos no recibidos'),
+          verified_at: now.toISOString(),
+          completed_at: isApproved ? now.toISOString() : null
+        })
+        .eq('order_id', orderId);
+      if (zelleUpdateErr) throw new Error(zelleUpdateErr.message);
+
+      const { error: payUpdateErr } = await supabase
+        .from('payments')
+        .update({ status: finalStatus })
+        .eq('id', orderId);
+      if (payUpdateErr) throw new Error(payUpdateErr.message);
+
+      if (isApproved) {
+        await rankingService.placeAdInRanking({
+          userId: payment.user_id,
+          paymentId: payment.id,
+          position: payment.position,
+          businessName: payment.business_name,
+          targetUrl: payment.target_url,
+          slogan: payment.slogan,
+          category: payment.category,
+          avatar: payment.avatar,
+          amountPaid: Number(payment.amount_usd),
+          durationHours: payment.duration_hours,
+          zoneKey: payment.zone_key || 'nacional'
+        });
+
+        if (payment.user_id) {
+          await supabase.from('notifications').insert([{
+            user_id: payment.user_id,
+            message: `¡Transferencia Zelle verificada! Tu anuncio '${payment.business_name}' ha sido activado en el puesto #${payment.position} del Ranking.`,
+            type: 'payment'
+          }]);
+        }
+      } else if (payment.user_id) {
+        await supabase.from('notifications').insert([{
+          user_id: payment.user_id,
+          message: `Tu pago Zelle para '${payment.business_name}' fue rechazado. Motivo: ${adminNotes || 'Referencia no encontrada en cuenta bancaria.'}`,
+          type: 'alert'
+        }]);
+      }
+
+      return {
+        success: true,
+        status: finalStatus,
+        orderId,
+        message: isApproved ? 'Pago Zelle aprobado y pauta activada en el ranking.' : 'Pago Zelle rechazado.'
+      };
+    }
 
     if (db.isPostgresActive) {
       const zelleRes = await db.query('SELECT * FROM zelle_payments WHERE order_id = $1', [orderId]);
@@ -585,7 +834,20 @@ export class PaymentService {
     let avatar = '🚀';
     let category = 'General';
 
-    if (db.isPostgresActive && data.paymentId) {
+    if (supabase && data.paymentId) {
+      const { data: p } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', data.paymentId)
+        .maybeSingle();
+      if (p) {
+        businessName = p.business_name;
+        targetUrl = p.target_url;
+        slogan = p.slogan;
+        avatar = p.avatar;
+        category = p.category;
+      }
+    } else if (db.isPostgresActive && data.paymentId) {
       const res = await db.query('SELECT * FROM payments WHERE id::text = $1', [data.paymentId]);
       if (res.rows.length > 0) {
         const p = res.rows[0];
@@ -643,12 +905,13 @@ export class PaymentService {
     zone_key?: string;
   }) {
     const zoneKey = (orderData.zoneKey || orderData.zone_key || 'nacional').toLowerCase();
-    const duration = orderData.durationHours || 24;
+    const pricingInfo = await zonesService.getPricingForPosition(zoneKey, orderData.position);
+    const duration = orderData.durationHours || pricingInfo.duration_hours || 24;
     const expiresAt = new Date(Date.now() + duration * 3600 * 1000);
     const orderId = `VENFI_PM_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
     // Validar monto mínimo según zona y puesto requerido
-    const expectedAmount = await zonesService.getPriceForPosition(zoneKey, orderData.position);
+    const expectedAmount = pricingInfo.price_usd;
     const finalAmountUsd = Math.max(orderData.amountUsd || expectedAmount, expectedAmount);
 
     // Obtener tasa BCV oficial
@@ -657,7 +920,30 @@ export class PaymentService {
 
     let paymentRecord: any;
 
-    if (db.isPostgresActive) {
+    if (supabase) {
+      const { data: insertedPayment, error: payError } = await supabase
+        .from('payments')
+        .insert([{
+          id: orderId,
+          user_id: userId || null,
+          amount_usd: finalAmountUsd,
+          position: orderData.position,
+          duration_hours: duration,
+          status: 'pending',
+          payment_method: 'pago_movil',
+          business_name: orderData.businessName,
+          target_url: orderData.targetUrl,
+          slogan: orderData.slogan,
+          category: orderData.category || 'General',
+          avatar: orderData.avatar || '🚀',
+          expires_at: expiresAt.toISOString(),
+          zone_key: zoneKey
+        }])
+        .select()
+        .single();
+      if (payError) throw new Error(payError.message);
+      paymentRecord = insertedPayment;
+    } else if (db.isPostgresActive) {
       const res = await db.query(
         `INSERT INTO payments (
           id, user_id, amount_usd, position, duration_hours, status, payment_method, 
@@ -739,7 +1025,18 @@ export class PaymentService {
    */
   public async generatePagoMovilQR(orderId: string) {
     let payment: any;
-    if (db.isPostgresActive) {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) {
+        throw new Error('Orden de Pago Móvil no encontrada.');
+      }
+      payment = data;
+    } else if (db.isPostgresActive) {
       const res = await db.query('SELECT * FROM payments WHERE id::text = $1', [orderId]);
       if (res.rows.length === 0) {
         throw new Error('Orden de Pago Móvil no encontrada.');
@@ -792,6 +1089,39 @@ export class PaymentService {
       throw new Error('El ID de orden y el número de referencia son obligatorios.');
     }
 
+    if (supabase) {
+      const { data: current, error: fetchErr } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (fetchErr) throw new Error(fetchErr.message);
+      if (!current) {
+        throw new Error('Orden de Pago Móvil no encontrada.');
+      }
+      if (current.status !== 'pending') {
+        throw new Error(`La orden ya ha sido procesada con estado: ${current.status}`);
+      }
+
+      const { data: updated, error: updateErr } = await supabase
+        .from('payments')
+        .update({
+          reference_number: referenceNumber.trim(),
+          proof_image_url: proofImageUrl || null,
+          tx_hash: referenceNumber.trim()
+        })
+        .eq('id', orderId)
+        .select()
+        .single();
+      if (updateErr) throw new Error(updateErr.message);
+
+      return {
+        success: true,
+        message: 'Comprobante registrado exitosamente. Nuestro equipo administrativo verificará la transacción en minutos.',
+        data: updated
+      };
+    }
+
     if (db.isPostgresActive) {
       const checkRes = await db.query('SELECT * FROM payments WHERE id::text = $1', [orderId]);
       if (checkRes.rows.length === 0) {
@@ -841,6 +1171,32 @@ export class PaymentService {
    * 3. Devuelve todas las órdenes con payment_method = 'pago_movil' y status = 'pending'
    */
   public async listPagoMovilPending() {
+    if (supabase) {
+      const { data: pending, error } = await supabase
+        .from('payments')
+        .select('*')
+        .in('payment_method', ['pago_movil', 'pagomovil'])
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      if (!pending || pending.length === 0) return [];
+
+      const userIds = Array.from(new Set(pending.map((p: any) => p.user_id).filter(Boolean)));
+      const { data: users } = userIds.length
+        ? await supabase.from('users').select('id, email, username').in('id', userIds)
+        : { data: [] as any[] };
+      const userMap = new Map((users || []).map((u: any) => [String(u.id), u]));
+
+      return pending.map((p: any) => {
+        const u = p.user_id ? userMap.get(String(p.user_id)) : null;
+        return {
+          ...p,
+          user_email: u?.email || null,
+          user_username: u?.username || null
+        };
+      });
+    }
+
     if (db.isPostgresActive) {
       const res = await db.query(
         `SELECT p.*, u.email as user_email, u.username as user_username
@@ -869,6 +1225,54 @@ export class PaymentService {
    * 4. Aprueba una orden de Pago Móvil y activa la pauta en el ranking
    */
   public async approvePagoMovil(orderId: string, adminNotes?: string) {
+    if (supabase) {
+      const { data: payment, error: fetchErr } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (fetchErr) throw new Error(fetchErr.message);
+      if (!payment) {
+        throw new Error('Orden de pago no encontrada.');
+      }
+
+      const { error: updateErr } = await supabase
+        .from('payments')
+        .update({ status: 'completed' })
+        .eq('id', orderId);
+      if (updateErr) throw new Error(updateErr.message);
+
+      await rankingService.placeAdInRanking({
+        userId: payment.user_id,
+        paymentId: payment.id,
+        position: payment.position,
+        businessName: payment.business_name,
+        targetUrl: payment.target_url,
+        slogan: payment.slogan,
+        category: payment.category,
+        avatar: payment.avatar,
+        amountPaid: Number(payment.amount_usd),
+        durationHours: payment.duration_hours,
+        zoneKey: payment.zone_key || 'nacional'
+      });
+
+      if (payment.user_id) {
+        await supabase.from('notifications').insert([{
+          user_id: payment.user_id,
+          message: `¡Pago Móvil verificado! Tu anuncio '${payment.business_name}' ha sido activado en el puesto #${payment.position} del Ranking.`,
+          type: 'payment'
+        }]);
+      }
+
+      return {
+        success: true,
+        message: 'Pago aprobado y tarjeta activada',
+        orderId,
+        status: 'completed',
+        adminNotes
+      };
+    }
+
     if (db.isPostgresActive) {
       const paymentRes = await db.query('SELECT * FROM payments WHERE id::text = $1', [orderId]);
       if (paymentRes.rows.length === 0) {
@@ -945,6 +1349,40 @@ export class PaymentService {
    * 5. Rechaza una orden de Pago Móvil
    */
   public async rejectPagoMovil(orderId: string, adminNotes?: string) {
+    if (supabase) {
+      const { data: payment, error: fetchErr } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if (fetchErr) throw new Error(fetchErr.message);
+      if (!payment) {
+        throw new Error('Orden de pago no encontrada.');
+      }
+
+      const { error: updateErr } = await supabase
+        .from('payments')
+        .update({ status: 'rejected' })
+        .eq('id', orderId);
+      if (updateErr) throw new Error(updateErr.message);
+
+      if (payment.user_id) {
+        await supabase.from('notifications').insert([{
+          user_id: payment.user_id,
+          message: `Tu Pago Móvil para '${payment.business_name}' fue rechazado. Motivo: ${adminNotes || 'Referencia bancaria no encontrada o inválida.'}`,
+          type: 'alert'
+        }]);
+      }
+
+      return {
+        success: true,
+        message: 'Pago rechazado',
+        orderId,
+        status: 'rejected',
+        adminNotes
+      };
+    }
+
     if (db.isPostgresActive) {
       const paymentRes = await db.query('SELECT * FROM payments WHERE id::text = $1', [orderId]);
       if (paymentRes.rows.length === 0) {

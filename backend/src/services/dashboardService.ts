@@ -1,4 +1,5 @@
 import { db } from '../database/db';
+import { supabase } from '../database/supabase';
 
 export interface DashboardSummary {
   userId: string;
@@ -114,7 +115,41 @@ export class DashboardService {
       { city: 'Bogotá', country: 'Colombia', flag: '🇨🇴', clicks: 48, percentage: 4.0 }
     ];
 
-    if (db.isPostgresActive) {
+    if (supabase) {
+      try {
+        const { data: rows, error } = await supabase
+          .from('clicks_log')
+          .select('city, country')
+          .or(`user_id.eq.${userId},user_id.is.null`);
+        if (!error && rows && rows.length > 0) {
+          const counts = new Map<string, { city: string; country: string; clicks: number }>();
+          for (const r of rows) {
+            const key = `${r.city}__${r.country}`;
+            const existing = counts.get(key);
+            if (existing) {
+              existing.clicks += 1;
+            } else {
+              counts.set(key, { city: r.city, country: r.country, clicks: 1 });
+            }
+          }
+          const grouped = Array.from(counts.values())
+            .sort((a, b) => b.clicks - a.clicks)
+            .slice(0, 6);
+          if (grouped.length >= 3) {
+            const total = grouped.reduce((acc, r) => acc + r.clicks, 0);
+            return grouped.map(r => ({
+              city: r.city,
+              country: r.country,
+              flag: r.country === 'Venezuela' ? '🇻🇪' : (r.country === 'Estados Unidos' ? '🇺🇸' : '🇪🇸'),
+              clicks: r.clicks,
+              percentage: total > 0 ? Number(((r.clicks / total) * 100).toFixed(1)) : 0
+            }));
+          }
+        }
+      } catch (err) {
+        // Fallback a defaultCities
+      }
+    } else if (db.isPostgresActive) {
       try {
         const res = await db.query(
           `SELECT city, country, COUNT(*) as clicks
@@ -150,7 +185,42 @@ export class DashboardService {
   public async getActiveCampaigns(userId: string): Promise<ActiveCampaign[]> {
     const now = new Date();
 
-    if (db.isPostgresActive) {
+    if (supabase) {
+      const { data: rows, error } = await supabase
+        .from('ranking')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('position', { ascending: true });
+      if (error) throw new Error(error.message);
+
+      return (rows || []).map((r: any) => {
+        const endTime = r.end_time ? new Date(r.end_time) : new Date(Date.now() + 24 * 3600 * 1000);
+        const hoursRemaining = Math.max(0, Number(((endTime.getTime() - now.getTime()) / (3600 * 1000)).toFixed(1)));
+        const views = r.views_received || 250;
+        const clicks = r.clicks_received || 28;
+        const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
+
+        return {
+          id: r.id,
+          position: r.position,
+          tier: r.tier,
+          businessName: r.business_name,
+          slogan: r.slogan,
+          targetUrl: r.target_url,
+          avatar: r.avatar || '🚀',
+          category: r.category || 'General',
+          amountPaid: Number(r.amount_paid || 15),
+          startTime: r.start_time,
+          endTime: endTime.toISOString(),
+          hoursRemaining,
+          clicksReceived: clicks,
+          viewsReceived: views,
+          ctr,
+          paymentId: r.payment_id
+        };
+      });
+    } else if (db.isPostgresActive) {
       const res = await db.query(
         `SELECT r.*, p.payment_method
          FROM ranking r
@@ -222,7 +292,15 @@ export class DashboardService {
    * Obtiene el historial de facturación y pagos del usuario
    */
   public async getPaymentHistory(userId: string) {
-    if (db.isPostgresActive) {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('id, amount_usd, position, duration_hours, status, payment_method, tx_hash, business_name, created_at, expires_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data || [];
+    } else if (db.isPostgresActive) {
       const res = await db.query(
         `SELECT id, amount_usd, position, duration_hours, status, payment_method, tx_hash, business_name, created_at, expires_at
          FROM payments
@@ -258,7 +336,16 @@ export class DashboardService {
    * Obtiene las notificaciones del usuario
    */
   public async getUserNotifications(userId: string) {
-    if (db.isPostgresActive) {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, message, type, created_at, is_read')
+        .or(`user_id.eq.${userId},user_id.is.null`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw new Error(error.message);
+      return data || [];
+    } else if (db.isPostgresActive) {
       const res = await db.query(
         `SELECT id, message, type, created_at, is_read
          FROM notifications

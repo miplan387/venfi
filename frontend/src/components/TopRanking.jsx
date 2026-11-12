@@ -51,6 +51,7 @@ export const TopRanking = ({
 }) => {
   const [selectedZone, setSelectedZone] = useState(propZone || 'nacional');
   const [rankingSlots, setRankingSlots] = useState(initialSlots || []);
+  const [zonePricingList, setZonePricingList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Sincronizar si cambia propZone desde el padre
@@ -60,27 +61,38 @@ export const TopRanking = ({
     }
   }, [propZone]);
 
-  // Fetch del ranking según la zona seleccionada
+  // Fetch del ranking y de las tarifas configuradas según la zona seleccionada
   useEffect(() => {
     let isMounted = true;
-    const fetchRanking = async () => {
+    const fetchRankingAndPricing = async () => {
       setLoading(true);
       try {
-        const res = await fetch(apiUrl(`/api/ranking?zone=${selectedZone}`));
-        if (res.ok) {
-          const json = await res.json();
+        const [rankingRes, pricingRes] = await Promise.all([
+          fetch(apiUrl(`/api/ranking?zone=${selectedZone}`)),
+          fetch(apiUrl(`/api/zones/${selectedZone}/pricing`))
+        ]);
+
+        if (rankingRes.ok) {
+          const json = await rankingRes.json();
           if (json.success && Array.isArray(json.data) && isMounted) {
             setRankingSlots(json.data);
           }
         }
+
+        if (pricingRes.ok) {
+          const pJson = await pricingRes.json();
+          if (pJson.success && Array.isArray(pJson.data) && isMounted) {
+            setZonePricingList(pJson.data);
+          }
+        }
       } catch (err) {
-        console.warn('Error al cargar ranking de zona:', err);
+        console.warn('Error al cargar ranking y tarifas de zona:', err);
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
-    fetchRanking();
+    fetchRankingAndPricing();
     return () => { isMounted = false; };
   }, [selectedZone]);
 
@@ -109,9 +121,27 @@ export const TopRanking = ({
   }, []);
 
   const isNational = (selectedZone || 'nacional').toLowerCase() === 'nacional';
-  const pricePos1 = isNational ? 15 : 10;
-  const pricePos2 = isNational ? 10 : 6;
-  const pricePos3 = isNational ? 10 : 4;
+
+  const getPriceForPosition = (pos) => {
+    // 1. Prioridad: Tarifa de zona configurada desde /api/zones/:key/pricing
+    const item = zonePricingList.find(p => Number(p.position) === Number(pos));
+    if (item && item.price_usd !== undefined && item.price_usd !== null) {
+      return Number(item.price_usd);
+    }
+    // 2. Prioridad: Tarifa enriquecida directamente en el slot de /api/ranking
+    const slot = rankingSlots.find(s => Number(s.position) === Number(pos));
+    if (slot && slot.price_usd !== undefined && slot.price_usd !== null) {
+      return Number(slot.price_usd);
+    }
+    // 3. Fallback estándar
+    if (pos === 1) return 10;
+    if (pos === 2 || pos === 3) return 6;
+    return 4;
+  };
+
+  const pricePos1 = getPriceForPosition(1);
+  const pricePos2 = getPriceForPosition(2);
+  const pricePos3 = getPriceForPosition(3);
 
   const normalizedList = rankingSlots.map(normalizeSlot).filter(Boolean);
   const slot1 = normalizedList.find(s => s.position === 1);
@@ -527,13 +557,14 @@ export const TopRanking = ({
                 <Award size={18} color="var(--color-primary)" /> Puestos del #4 al #10
               </h3>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Tarifa estándar: $5.00 / día
+                Tarifa estándar: ${getPriceForPosition(4).toFixed(2)} / día
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {slotsDark.map((slot) => {
                 const isAvailable = slot.amountPaid === 0;
+                const slotDarkPrice = getPriceForPosition(slot.position);
                 return (
                   <div
                     key={slot.position}
@@ -588,7 +619,7 @@ export const TopRanking = ({
                           className="btn btn-primary"
                           style={{ fontSize: '0.78rem', padding: '0.35rem 0.85rem' }}
                         >
-                          <Zap size={13} /> ¡Ocupar por $5!
+                          <Zap size={13} /> ¡Ocupar por ${slotDarkPrice}!
                         </button>
                       ) : (
                         <div style={{ display: 'flex', gap: '0.4rem' }}>

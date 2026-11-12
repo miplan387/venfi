@@ -40,7 +40,40 @@ export const AdminCards = ({ onBackToPortal }) => {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Pestañas del Panel de Administración
-  const [activeTab, setActiveTab] = useState('cards'); // 'cards' | 'pagomovil' | 'bank_config'
+  const [activeTab, setActiveTab] = useState('control_center'); // 'control_center' | 'cards' | 'remesas_providers' | 'payment-methods' | 'pagomovil' | 'bank_config' | 'payment_settings'
+
+  // Centro de Control (Potenciómetro de Publicidad y KPIs)
+  const [controlKpis, setControlKpis] = useState({
+    totalRevenue: 0,
+    activeAdsCount: 0,
+    totalClicks: 0,
+    registeredUsers: 0
+  });
+  const [loadingControlKpis, setLoadingControlKpis] = useState(false);
+  const [allPricingList, setAllPricingList] = useState([]);
+  const [loadingPricingList, setLoadingPricingList] = useState(false);
+  const [selectedControlZone, setSelectedControlZone] = useState('nacional');
+  const [availableZones, setAvailableZones] = useState([
+    { key: 'nacional', name: 'Nacional (Toda Venezuela)', icon: '🇻🇪' },
+    { key: 'caracas', name: 'Caracas (Gran Caracas)', icon: '🏙️' },
+    { key: 'maracaibo', name: 'Maracaibo (Zulia)', icon: '⚡' },
+    { key: 'valencia', name: 'Valencia (Carabobo)', icon: '🏭' }
+  ]);
+  const [savingPricingId, setSavingPricingId] = useState(null);
+  const [savedPricingSuccessId, setSavedPricingSuccessId] = useState(null);
+  const [deletingPricingId, setDeletingPricingId] = useState(null);
+
+  // Modal para Crear Nueva Tarifa
+  const [isNewPricingModalOpen, setIsNewPricingModalOpen] = useState(false);
+  const [isCreatingPricing, setIsCreatingPricing] = useState(false);
+  const [newPricingData, setNewPricingData] = useState({
+    zone_key: 'nacional',
+    position: 1,
+    tier: 'gold',
+    price_usd: 15.00,
+    duration_hours: 24,
+    is_active: true
+  });
 
   // Pagos Móviles Pendientes
   const [pendingPayments, setPendingPayments] = useState([]);
@@ -275,7 +308,243 @@ export const AdminCards = ({ onBackToPortal }) => {
     fetchAllPaymentMethods();
     fetchAllRemittanceProviders();
     fetchPaymentSettings();
+    fetchControlCenterData();
   }, []);
+
+  // Cargar lista completa de tarifas desde la API
+  const fetchPricing = async () => {
+    try {
+      setLoadingPricingList(true);
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const headers = {
+        'x-admin-key': 'venfi-admin-2026'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(apiUrl('/api/admin/pricing'), { headers });
+      if (res.ok) {
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
+        // Forzar nueva referencia de array para reactividad en React
+        setAllPricingList([...list]);
+        return list;
+      }
+    } catch (err) {
+      console.error('Error al cargar tarifas:', err);
+    } finally {
+      setLoadingPricingList(false);
+    }
+    return [];
+  };
+
+  // Cargar datos para el Centro de Control
+  const fetchControlCenterData = async () => {
+    try {
+      setLoadingControlKpis(true);
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const headers = {
+        'x-admin-key': 'venfi-admin-2026'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      // 1. Cargar KPIs
+      const kpiRes = await fetch(apiUrl('/api/admin/kpis'), { headers });
+      if (kpiRes.ok) {
+        const kpiJson = await kpiRes.json();
+        if (kpiJson.success && kpiJson.data) {
+          setControlKpis(kpiJson.data);
+        }
+      }
+
+      // 2. Cargar Zonas activas
+      const zonesRes = await fetch(apiUrl('/api/zones'));
+      if (zonesRes.ok) {
+        const zonesJson = await zonesRes.json();
+        if (zonesJson.success && Array.isArray(zonesJson.data) && zonesJson.data.length > 0) {
+          setAvailableZones(zonesJson.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar datos del Centro de Control:', err);
+    } finally {
+      setLoadingControlKpis(false);
+    }
+
+    // 3. Cargar tarifas de forma independiente
+    await fetchPricing();
+  };
+
+  const handlePricingFieldChange = (pricingId, field, value) => {
+    setAllPricingList(prev => prev.map(item => {
+      if (item.id === pricingId) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  const handleSavePricingRow = async (pricingItem) => {
+    try {
+      setSavingPricingId(pricingItem.id);
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-admin-key': 'venfi-admin-2026'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(apiUrl(`/api/admin/pricing/${pricingItem.id}`), {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          zone_key: pricingItem.zone_key,
+          position: Number(pricingItem.position),
+          tier: pricingItem.tier,
+          price_usd: Number(pricingItem.price_usd),
+          duration_hours: Number(pricingItem.duration_hours),
+          is_active: Boolean(pricingItem.is_active)
+        })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const updatedItem = json.data || pricingItem;
+
+        // Actualizar inmediatamente la lista local de tarifas con la respuesta del backend
+        setAllPricingList(prev => {
+          const filtered = prev.filter(p => p.id !== updatedItem.id);
+          return [...filtered, updatedItem].sort((a, b) => a.position - b.position);
+        });
+
+        setSavedPricingSuccessId(pricingItem.id);
+        showNotification(`Puesto #${pricingItem.position} (${pricingItem.zone_key.toUpperCase()}) guardado: Tier ${pricingItem.tier.toUpperCase()} | $${pricingItem.price_usd} / ${pricingItem.duration_hours}h`);
+        setTimeout(() => setSavedPricingSuccessId(null), 3000);
+
+        // VITAL: Recargar datos actualizados desde la API
+        await fetchPricing();
+        fetchControlCenterData();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        const errMsg = errJson.message || 'Error al actualizar tarifa';
+        showNotification(errMsg, 'error');
+        alert(`❌ Error al actualizar tarifa en el servidor:\n\n${errMsg}`);
+      }
+    } catch (err) {
+      console.error('Error al guardar tarifa de puesto:', err);
+      const errMsg = err.message || 'Error de conexión';
+      showNotification('Error de conexión al guardar tarifa: ' + errMsg, 'error');
+      alert(`❌ Error de conexión al guardar tarifa:\n\n${errMsg}`);
+    } finally {
+      setSavingPricingId(null);
+    }
+  };
+
+  // Guardar Tarifa (Nueva tarifa o enviada desde el modal)
+  const handleSavePricing = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isCreatingPricing) return;
+
+    try {
+      setIsCreatingPricing(true);
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-admin-key': 'venfi-admin-2026'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(apiUrl('/api/admin/pricing'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          zone_key: newPricingData.zone_key,
+          position: Number(newPricingData.position),
+          tier: newPricingData.tier,
+          price_usd: Number(newPricingData.price_usd),
+          duration_hours: Number(newPricingData.duration_hours),
+          is_active: Boolean(newPricingData.is_active)
+        })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const createdItem = json.data;
+
+        // 1. Cierra el modal
+        setIsNewPricingModalOpen(false);
+
+        // 2. Sincronizar zona seleccionada
+        if (newPricingData.zone_key) {
+          setSelectedControlZone(newPricingData.zone_key.toLowerCase());
+        }
+
+        // 3. Forzar re-renderizado inmediato con el nuevo ítem
+        if (createdItem) {
+          setAllPricingList(prev => {
+            const filtered = prev.filter(p => p.id !== createdItem.id);
+            return [...filtered, createdItem].sort((a, b) => a.position - b.position);
+          });
+        }
+
+        showNotification(`Nueva tarifa guardada: Puesto #${newPricingData.position} (${newPricingData.zone_key.toUpperCase()}) por $${newPricingData.price_usd}`);
+
+        // 4. VITAL: Vuelve a pedir la lista completa
+        await fetchPricing();
+        fetchControlCenterData();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        const errMsg = errJson.message || 'Error al crear la tarifa';
+        showNotification(errMsg, 'error');
+        alert(`❌ Error al guardar tarifa en el servidor:\n\n${errMsg}`);
+      }
+    } catch (err) {
+      console.error('Error al crear tarifa:', err);
+      const errMsg = err.message || 'Error de conexión';
+      showNotification('Error de conexión al crear tarifa: ' + errMsg, 'error');
+      alert(`❌ Error de conexión al crear tarifa:\n\n${errMsg}`);
+    } finally {
+      setIsCreatingPricing(false);
+    }
+  };
+
+  // Alias para mantener compatibilidad con cualquier llamada existente
+  const handleCreatePricingSubmit = handleSavePricing;
+
+  const handleDeletePricing = async (item) => {
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que deseas eliminar la tarifa del puesto #${item.position} (${item.zone_key.toUpperCase()}) de $${item.price_usd}?\n\nEsta acción eliminará el registro de configuración de la zona.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingPricingId(item.id);
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const headers = {
+        'x-admin-key': 'venfi-admin-2026'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(apiUrl(`/api/admin/pricing/${item.id}`), {
+        method: 'DELETE',
+        headers
+      });
+
+      if (res.ok) {
+        showNotification(`Tarifa #${item.position} (${item.zone_key.toUpperCase()}) eliminada correctamente.`);
+        setAllPricingList(prev => prev.filter(p => p.id !== item.id));
+        await fetchPricing();
+        fetchControlCenterData();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        showNotification(errJson.message || 'Error al eliminar tarifa', 'error');
+      }
+    } catch (err) {
+      console.error('Error al eliminar tarifa:', err);
+      showNotification('Error de conexión al eliminar tarifa', 'error');
+    } finally {
+      setDeletingPricingId(null);
+    }
+  };
 
   const copyToClipboard = (text, fieldName) => {
     if (!text) return;
@@ -1008,6 +1277,29 @@ export const AdminCards = ({ onBackToPortal }) => {
         }}>
           <button
             type="button"
+            onClick={() => setActiveTab('control_center')}
+            style={{
+              background: activeTab === 'control_center' ? 'rgba(251, 191, 36, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+              border: activeTab === 'control_center' ? '1.5px solid var(--color-gold)' : '1px solid var(--border-subtle)',
+              color: activeTab === 'control_center' ? 'var(--color-gold)' : 'var(--text-secondary)',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              fontWeight: 800,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.2s',
+              boxShadow: activeTab === 'control_center' ? '0 0 18px rgba(251, 191, 36, 0.15)' : 'none'
+            }}
+          >
+            <Settings size={16} />
+            <span>⚙️ Centro de Control</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('cards')}
             style={{
               background: activeTab === 'cards' ? 'rgba(0, 245, 155, 0.15)' : 'rgba(255, 255, 255, 0.03)',
@@ -1170,6 +1462,504 @@ export const AdminCards = ({ onBackToPortal }) => {
             <span>⚙️ Configuración de Pagos</span>
           </button>
         </div>
+
+        {/* =========================================================================
+            PESTAÑA 0: CENTRO DE CONTROL DE PUBLICIDAD (FINTECH POTENCIÓMETRO)
+           ========================================================================= */}
+        {activeTab === 'control_center' && (
+          <div>
+            {/* Cabecera del Centro de Control */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span>⚙️ Centro de Control Publicitario</span>
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: '0.3rem 0 0 0' }}>
+                  Configura precios en USD, duración de pautas (horas) y disponibilidad por zona en tiempo real sin tocar la base de datos.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchControlCenterData}
+                className="btn btn-secondary"
+                style={{ padding: '0.6rem 1.1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem' }}
+              >
+                <RefreshCw size={15} className={loadingControlKpis || loadingPricingList ? 'animate-spin' : ''} />
+                <span>Sincronizar Datos</span>
+              </button>
+            </div>
+
+            {/* SECCIÓN 1: KPIs VISUALES */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '1.25rem',
+              marginBottom: '2rem'
+            }}>
+              {/* KPI 1: Ingresos Totales */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(251, 191, 36, 0.35)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.25)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Ingresos Totales
+                  </span>
+                  <span style={{ fontSize: '1.35rem' }}>💰</span>
+                </div>
+                <div style={{ fontSize: '1.9rem', fontWeight: 900, color: 'var(--color-gold)' }}>
+                  ${Number(controlKpis.totalRevenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  Pagos completados verificados
+                </div>
+              </div>
+
+              {/* KPI 2: Pautas Activas */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(0, 245, 155, 0.3)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.25)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Pautas Activas
+                  </span>
+                  <span style={{ fontSize: '1.35rem' }}>🏆</span>
+                </div>
+                <div style={{ fontSize: '1.9rem', fontWeight: 900, color: '#ffffff' }}>
+                  {controlKpis.activeAdsCount || cards.filter(c => c.isActive).length}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  Tarjetas visibles en el ranking
+                </div>
+              </div>
+
+              {/* KPI 3: Clics Totales */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.25)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Clics Totales
+                  </span>
+                  <span style={{ fontSize: '1.35rem' }}>👁️</span>
+                </div>
+                <div style={{ fontSize: '1.9rem', fontWeight: 900, color: '#38bdf8' }}>
+                  {Number(controlKpis.totalClicks || 0).toLocaleString('en-US')}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  Tráfico enviado a anunciantes
+                </div>
+              </div>
+
+              {/* KPI 4: Usuarios Registrados */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.25)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Usuarios Registrados
+                  </span>
+                  <span style={{ fontSize: '1.35rem' }}>👥</span>
+                </div>
+                <div style={{ fontSize: '1.9rem', fontWeight: 900, color: '#e9d5ff' }}>
+                  {Number(controlKpis.registeredUsers || 0).toLocaleString('en-US')}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  Cuentas en la plataforma
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN 2: SELECTOR DE ZONA */}
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(251, 191, 36, 0.25)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              marginBottom: '1.75rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-gold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    📍 Selector de Zona Geográfica
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                    Elige la plaza donde deseas ajustar precios y duración de los puestos (#1 al #10)
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  {availableZones.map((zone) => {
+                    const isSelected = selectedControlZone === zone.key;
+                    return (
+                      <button
+                        key={zone.key}
+                        type="button"
+                        onClick={() => setSelectedControlZone(zone.key)}
+                        style={{
+                          padding: '0.55rem 1rem',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          fontWeight: 800,
+                          fontSize: '0.85rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          background: isSelected ? 'rgba(0, 245, 155, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                          border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--border-subtle)',
+                          color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <span>{zone.icon || '📍'}</span>
+                        <span>{zone.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN 3: TABLA INTERACTIVA DE PUESTOS (POTENCIÓMETRO) */}
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.72)',
+              backdropFilter: 'blur(14px)',
+              border: '1px solid rgba(251, 191, 36, 0.25)',
+              borderRadius: '18px',
+              overflow: 'hidden',
+              boxShadow: '0 12px 35px rgba(0, 0, 0, 0.3)'
+            }}>
+              <div style={{
+                padding: '1.1rem 1.5rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem'
+              }}>
+                <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🎛️ Potenciómetro de Tarifas y Vigencia — Zona:</span>
+                  <span style={{ color: 'var(--color-gold)', textTransform: 'uppercase' }}>{selectedControlZone}</span>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewPricingData({
+                        zone_key: selectedControlZone,
+                        position: (allPricingList.filter(p => (p.zone_key || 'nacional').toLowerCase() === selectedControlZone.toLowerCase()).length) + 1 || 1,
+                        tier: 'dark',
+                        price_usd: 5.00,
+                        duration_hours: 24,
+                        is_active: true
+                      });
+                      setIsNewPricingModalOpen(true);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.15))',
+                      border: '1.5px solid var(--color-gold)',
+                      color: 'var(--color-gold)',
+                      padding: '0.45rem 1rem',
+                      borderRadius: '10px',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      boxShadow: '0 4px 15px rgba(251, 191, 36, 0.2)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Plus size={16} />
+                    <span>➕ Nueva Tarifa</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fetchPricing()}
+                    title="Recargar tabla de tarifas"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: 'var(--text-secondary)',
+                      padding: '0.45rem 0.8rem',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <RefreshCw size={14} className={loadingPricingList ? "animate-spin" : ""} />
+                    <span>Refrescar</span>
+                  </button>
+                </div>
+              </div>
+
+              {loadingPricingList ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem auto', color: 'var(--color-primary)' }} />
+                  <div>Cargando matriz de precios desde Supabase...</div>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '780px' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255, 255, 255, 0.03)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                        <th style={{ padding: '0.9rem 1.25rem', textAlign: 'left', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>Posición</th>
+                        <th style={{ padding: '0.9rem 1rem', textAlign: 'left', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>Tier</th>
+                        <th style={{ padding: '0.9rem 1rem', textAlign: 'left', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>Precio (USD)</th>
+                        <th style={{ padding: '0.9rem 1rem', textAlign: 'left', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>Duración (Horas)</th>
+                        <th style={{ padding: '0.9rem 1rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>Estado</th>
+                        <th style={{ padding: '0.9rem 1.25rem', textAlign: 'right', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase' }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allPricingList
+                        .filter(p => (p.zone_key || 'nacional').toLowerCase() === selectedControlZone.toLowerCase())
+                        .sort((a, b) => a.position - b.position)
+                        .map((item) => {
+                          const isGold = item.tier === 'gold' || item.position === 1;
+                          const isSilver = item.tier === 'silver' || (item.position >= 2 && item.position <= 3);
+                          const isSavingThis = savingPricingId === item.id;
+                          const isSavedThis = savedPricingSuccessId === item.id;
+
+                          return (
+                            <tr
+                              key={item.id}
+                              style={{
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                background: isGold ? 'rgba(251, 191, 36, 0.04)' : 'transparent'
+                              }}
+                            >
+                              {/* Posición */}
+                              <td style={{ padding: '1rem 1.25rem' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '10px',
+                                  fontWeight: 900,
+                                  fontSize: '0.95rem',
+                                  background: isGold
+                                    ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.1))'
+                                    : isSilver
+                                      ? 'rgba(148, 163, 184, 0.18)'
+                                      : 'rgba(255, 255, 255, 0.06)',
+                                  color: isGold ? 'var(--color-gold)' : isSilver ? '#e2e8f0' : 'var(--text-secondary)',
+                                  border: isGold ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)'
+                                }}>
+                                  #{item.position}
+                                </span>
+                              </td>
+
+                              {/* Tier Editable */}
+                              <td style={{ padding: '1rem' }}>
+                                <select
+                                  value={item.tier || 'dark'}
+                                  onChange={(e) => handlePricingFieldChange(item.id, 'tier', e.target.value)}
+                                  style={{
+                                    background: isGold
+                                      ? 'rgba(251, 191, 36, 0.18)'
+                                      : isSilver
+                                        ? 'rgba(148, 163, 184, 0.18)'
+                                        : 'rgba(180, 83, 9, 0.18)',
+                                    color: isGold ? 'var(--color-gold)' : isSilver ? '#cbd5e1' : '#fdba74',
+                                    border: isGold
+                                      ? '1.5px solid rgba(251, 191, 36, 0.5)'
+                                      : isSilver
+                                        ? '1.5px solid rgba(148, 163, 184, 0.4)'
+                                        : '1.5px solid rgba(251, 146, 60, 0.4)',
+                                    borderRadius: '8px',
+                                    padding: '0.4rem 0.6rem',
+                                    fontWeight: 800,
+                                    fontSize: '0.78rem',
+                                    cursor: 'pointer',
+                                    outline: 'none'
+                                  }}
+                                >
+                                  <option value="gold" style={{ background: '#0f172a', color: '#fbbf24' }}>👑 Oro</option>
+                                  <option value="silver" style={{ background: '#0f172a', color: '#cbd5e1' }}>🥈 Plata</option>
+                                  <option value="bronze" style={{ background: '#0f172a', color: '#fdba74' }}>🥉 Bronce</option>
+                                  <option value="dark" style={{ background: '#0f172a', color: '#94a3b8' }}>🌑 Dark</option>
+                                </select>
+                              </td>
+
+                              {/* Precio USD */}
+                              <td style={{ padding: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={item.price_usd}
+                                    onChange={(e) => handlePricingFieldChange(item.id, 'price_usd', e.target.value)}
+                                    style={{
+                                      width: '92px',
+                                      background: 'rgba(255, 255, 255, 0.06)',
+                                      border: '1px solid rgba(251, 191, 36, 0.35)',
+                                      borderRadius: '8px',
+                                      padding: '0.45rem 0.6rem',
+                                      color: '#ffffff',
+                                      fontWeight: 800,
+                                      fontSize: '0.9rem'
+                                    }}
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Duración (Potenciómetro Slider) */}
+                              <td style={{ padding: '1rem', minWidth: '250px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <input
+                                    type="range"
+                                    min="1"
+                                    max="168"
+                                    value={item.duration_hours || 24}
+                                    onChange={(e) => handlePricingFieldChange(item.id, 'duration_hours', Number(e.target.value))}
+                                    style={{
+                                      flex: 1,
+                                      accentColor: 'var(--color-primary)',
+                                      cursor: 'pointer'
+                                    }}
+                                  />
+                                  <span style={{
+                                    minWidth: '82px',
+                                    textAlign: 'center',
+                                    padding: '0.3rem 0.55rem',
+                                    borderRadius: '8px',
+                                    background: 'rgba(0, 245, 155, 0.12)',
+                                    border: '1px solid rgba(0, 245, 155, 0.3)',
+                                    color: 'var(--color-primary)',
+                                    fontWeight: 800,
+                                    fontSize: '0.78rem'
+                                  }}>
+                                    {item.duration_hours || 24} Horas
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Estado Switch */}
+                              <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePricingFieldChange(item.id, 'is_active', !item.is_active)}
+                                  style={{
+                                    padding: '0.35rem 0.75rem',
+                                    borderRadius: '999px',
+                                    cursor: 'pointer',
+                                    fontWeight: 800,
+                                    fontSize: '0.76rem',
+                                    border: item.is_active ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.2)',
+                                    background: item.is_active ? 'rgba(0, 245, 155, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                    color: item.is_active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  {item.is_active ? '● Activo' : '○ Inactivo'}
+                                </button>
+                              </td>
+
+                              {/* Acciones (Guardar Cambios + Eliminar) */}
+                              <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <button
+                                    type="button"
+                                    disabled={isSavingThis}
+                                    onClick={() => handleSavePricingRow(item)}
+                                    className="btn btn-primary"
+                                    style={{
+                                      padding: '0.45rem 0.9rem',
+                                      fontSize: '0.8rem',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.4rem',
+                                      background: isSavedThis ? '#10b981' : undefined
+                                    }}
+                                  >
+                                    {isSavingThis ? (
+                                      <RefreshCw size={14} className="animate-spin" />
+                                    ) : isSavedThis ? (
+                                      <Check size={14} />
+                                    ) : (
+                                      <Save size={14} />
+                                    )}
+                                    <span>{isSavedThis ? 'Guardado' : 'Guardar'}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={deletingPricingId === item.id}
+                                    onClick={() => handleDeletePricing(item)}
+                                    style={{
+                                      background: 'rgba(239, 68, 68, 0.12)',
+                                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                                      color: 'var(--color-coral)',
+                                      borderRadius: '8px',
+                                      padding: '0.45rem 0.6rem',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    title="Eliminar tarifa de puesto"
+                                  >
+                                    {deletingPricingId === item.id ? (
+                                      <RefreshCw size={14} className="animate-spin" />
+                                    ) : (
+                                      <Trash2 size={15} />
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                      {allPricingList.filter(p => (p.zone_key || 'nacional').toLowerCase() === selectedControlZone.toLowerCase()).length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            No hay tarifas registradas en `zone_pricing` para la zona <strong>{selectedControlZone}</strong>.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* =========================================================================
             PESTAÑA 1: GESTIÓN DE TARJETAS DEL RANKING (TOP 10)
@@ -3085,6 +3875,282 @@ export const AdminCards = ({ onBackToPortal }) => {
                 </div>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            MODAL PARA CREAR NUEVA TARIFA (CENTRO DE CONTROL)
+           ========================================================================= */}
+        {isNewPricingModalOpen && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(3, 7, 18, 0.85)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 110,
+            padding: '1.5rem'
+          }}>
+            <div className="glass-panel" style={{
+              maxWidth: '560px',
+              width: '100%',
+              padding: '2rem',
+              border: '1.5px solid var(--color-gold)',
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(251, 191, 36, 0.2)',
+              position: 'relative'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>➕</span>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                      Nueva Tarifa de Publicidad
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0' }}>
+                      Configura el puesto, tier, precio y horas de vigencia para la plaza
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNewPricingModalOpen(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    padding: '0.4rem',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePricing} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                {/* Zona Geográfica */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                    Zona Geográfica
+                  </label>
+                  <select
+                    value={newPricingData.zone_key}
+                    onChange={(e) => setNewPricingData({ ...newPricingData, zone_key: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '10px',
+                      padding: '0.65rem 0.85rem',
+                      color: '#ffffff',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      outline: 'none'
+                    }}
+                  >
+                    {availableZones.map(z => (
+                      <option key={z.key} value={z.key} style={{ background: '#0f172a', color: '#ffffff' }}>
+                        {z.icon || '📍'} {z.name} ({z.key})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Fila: Posición y Tier */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Posición (#1 al #10)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      required
+                      value={newPricingData.position}
+                      onChange={(e) => setNewPricingData({ ...newPricingData, position: Number(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.9rem',
+                        fontWeight: 700
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Tier Visual
+                    </label>
+                    <select
+                      value={newPricingData.tier}
+                      onChange={(e) => setNewPricingData({ ...newPricingData, tier: e.target.value })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="gold" style={{ background: '#0f172a', color: '#fbbf24' }}>👑 Oro</option>
+                      <option value="silver" style={{ background: '#0f172a', color: '#cbd5e1' }}>🥈 Plata</option>
+                      <option value="bronze" style={{ background: '#0f172a', color: '#fdba74' }}>🥉 Bronce</option>
+                      <option value="dark" style={{ background: '#0f172a', color: '#94a3b8' }}>🌑 Dark</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Fila: Precio USD y Duración (Horas) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Precio (USD)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-primary)', fontWeight: 800 }}>
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        required
+                        value={newPricingData.price_usd}
+                        onChange={(e) => setNewPricingData({ ...newPricingData, price_usd: Number(e.target.value) })}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(251, 191, 36, 0.4)',
+                          borderRadius: '10px',
+                          padding: '0.65rem 0.85rem 0.65rem 1.85rem',
+                          color: '#ffffff',
+                          fontSize: '0.95rem',
+                          fontWeight: 800
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+                      Duración (Horas)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="720"
+                      required
+                      value={newPricingData.duration_hours}
+                      onChange={(e) => setNewPricingData({ ...newPricingData, duration_hours: Number(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '10px',
+                        padding: '0.65rem 0.85rem',
+                        color: '#ffffff',
+                        fontSize: '0.9rem',
+                        fontWeight: 700
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Slider interactivo de Duración con Badge */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Ajuste fino de duración:</span>
+                    <span style={{
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '6px',
+                      background: 'rgba(0, 245, 155, 0.15)',
+                      border: '1px solid rgba(0, 245, 155, 0.3)',
+                      color: 'var(--color-primary)',
+                      fontWeight: 800,
+                      fontSize: '0.78rem'
+                    }}>
+                      {newPricingData.duration_hours} Horas ({Math.round((newPricingData.duration_hours / 24) * 10) / 10} días)
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="168"
+                    value={Math.min(newPricingData.duration_hours, 168)}
+                    onChange={(e) => setNewPricingData({ ...newPricingData, duration_hours: Number(e.target.value) })}
+                    style={{
+                      width: '100%',
+                      accentColor: 'var(--color-primary)',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+
+                {/* Estado Activo */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.03)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#ffffff' }}>Estado de la Tarifa</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>Determina si los usuarios pueden contratar esta posición</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewPricingData({ ...newPricingData, is_active: !newPricingData.is_active })}
+                    style={{
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: '999px',
+                      cursor: 'pointer',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      border: newPricingData.is_active ? '1.5px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.2)',
+                      background: newPricingData.is_active ? 'rgba(0, 245, 155, 0.18)' : 'rgba(255, 255, 255, 0.06)',
+                      color: newPricingData.is_active ? 'var(--color-primary)' : 'var(--text-secondary)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {newPricingData.is_active ? '● Activa' : '○ Inactiva'}
+                  </button>
+                </div>
+
+                {/* Footer del Modal */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsNewPricingModalOpen(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    onClick={handleSavePricing}
+                    disabled={isCreatingPricing}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(0, 245, 155, 0.25))',
+                      border: '1.5px solid var(--color-gold)',
+                      color: 'var(--color-gold)'
+                    }}
+                  >
+                    {isCreatingPricing ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                    <span>Guardar Tarifa</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

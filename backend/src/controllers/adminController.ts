@@ -86,6 +86,21 @@ export class AdminController {
       });
     }
   }
+
+  public async getKpis(req: Request, res: Response): Promise<void> {
+    try {
+      const kpis = await adminService.getKpis();
+      res.status(200).json({
+        success: true,
+        data: kpis
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        message: err.message || 'Error al obtener KPIs administrativos'
+      });
+    }
+  }
 }
 
 export const adminController = new AdminController();

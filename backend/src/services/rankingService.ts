@@ -5,7 +5,7 @@ export class RankingService {
   private mapPricingToEmptySlots(normalizedZone: string, pricingRows: any[]) {
     return pricingRows.map((p: any) => ({
       id: `slot_${normalizedZone}_${p.position}`,
-      position: p.position,
+      position: Number(p.position),
       user_id: null,
       payment_id: null,
       business_name: 'Espacio Publicitario Disponible ✨',
@@ -14,6 +14,8 @@ export class RankingService {
       category: 'Publicidad Local',
       avatar: '🚀',
       tier: p.tier,
+      price_usd: Number(p.price_usd),
+      duration_hours: Number(p.duration_hours || 24),
       amount_paid: 0.00,
       start_time: new Date().toISOString(),
       end_time: null,
@@ -22,6 +24,45 @@ export class RankingService {
       is_active: true,
       zone_key: normalizedZone
     }));
+  }
+
+  /**
+   * Enriquecer cada slot con la tarifa y duración vigente desde zone_pricing
+   */
+  private async enrichSlotsWithPricing(normalizedZone: string, rows: any[]): Promise<any[]> {
+    try {
+      let pricingRows: any[] = [];
+      if (supabase) {
+        const { data } = await supabase
+          .from('zone_pricing')
+          .select('position, tier, price_usd, duration_hours')
+          .eq('zone_key', normalizedZone)
+          .eq('is_active', true);
+        if (data && data.length > 0) pricingRows = data;
+      } else if (db.isPostgresActive) {
+        const res = await db.query(
+          'SELECT position, tier, price_usd, duration_hours FROM zone_pricing WHERE zone_key = $1 AND is_active = TRUE',
+          [normalizedZone]
+        );
+        if (res.rows.length > 0) pricingRows = res.rows;
+      } else {
+        const store = db.getInMemoryStore();
+        pricingRows = (store.zone_pricing || []).filter((p: any) => p.zone_key === normalizedZone && p.is_active !== false);
+      }
+
+      return rows.map((r: any) => {
+        const p = pricingRows.find((pz: any) => Number(pz.position) === Number(r.position));
+        const defaultPrice = Number(r.position) === 1 ? 10 : Number(r.position) <= 3 ? 6 : 4;
+        return {
+          ...r,
+          position: Number(r.position),
+          price_usd: p ? Number(p.price_usd) : (r.price_usd !== undefined && r.price_usd !== null ? Number(r.price_usd) : defaultPrice),
+          duration_hours: p ? Number(p.duration_hours || 24) : Number(r.duration_hours || 24)
+        };
+      });
+    } catch {
+      return rows;
+    }
   }
 
   public async getTop10(zoneKey: string = 'nacional') {
@@ -40,7 +81,7 @@ export class RankingService {
         if (rankingError) {
           console.warn('⚠️ Error al leer ranking desde Supabase:', rankingError.message);
         } else if (rankingRows && rankingRows.length > 0) {
-          return rankingRows;
+          return await this.enrichSlotsWithPricing(normalizedZone, rankingRows);
         } else {
           // Si la zona aún no tiene anuncios pautados, consultar tarifas en zone_pricing vía Supabase
           const { data: pricingRows, error: pricingError } = await supabase
@@ -74,7 +115,7 @@ export class RankingService {
         [normalizedZone]
       );
       if (res.rows.length > 0) {
-        return res.rows;
+        return await this.enrichSlotsWithPricing(normalizedZone, res.rows);
       }
 
       // Si la zona aún no tiene anuncios pautados, generar slots disponibles según sus tarifas
@@ -94,7 +135,8 @@ export class RankingService {
     const store = db.getInMemoryStore();
     const zoneAds = (store.ranking || []).filter((r: any) => (r.zone_key || 'nacional') === normalizedZone);
     if (zoneAds.length > 0) {
-      return [...zoneAds].sort((a, b) => a.position - b.position);
+      const sorted = [...zoneAds].sort((a, b) => a.position - b.position);
+      return await this.enrichSlotsWithPricing(normalizedZone, sorted);
     }
 
     const pricings = (store.zone_pricing || []).filter((p: any) => p.zone_key === normalizedZone);
@@ -108,6 +150,40 @@ export class RankingService {
 
   public async trackClick(position: number, clientData: { ip?: string; referrer?: string; userAgent?: string; userId?: string }, zoneKey: string = 'nacional') {
     const normalizedZone = (zoneKey || 'nacional').toLowerCase().trim();
+
+    if (supabase) {
+      const { data: current, error: fetchErr } = await supabase
+        .from('ranking')
+        .select('id, clicks_received')
+        .eq('position', position)
+        .eq('zone_key', normalizedZone)
+        .maybeSingle();
+      if (fetchErr) throw new Error(fetchErr.message);
+
+      const newClicks = (current?.clicks_received || 0) + 1;
+      if (current) {
+        const { error: updateErr } = await supabase
+          .from('ranking')
+          .update({ clicks_received: newClicks })
+          .eq('id', current.id);
+        if (updateErr) throw new Error(updateErr.message);
+      }
+
+      const { error: logErr } = await supabase
+        .from('clicks_log')
+        .insert([{
+          user_id: clientData.userId || null,
+          ranking_position: position,
+          ip_address: clientData.ip || '127.0.0.1',
+          country: 'Venezuela',
+          city: normalizedZone,
+          referrer: clientData.referrer || null,
+          user_agent: clientData.userAgent || null
+        }]);
+      if (logErr) throw new Error(logErr.message);
+
+      return { position, zone: normalizedZone, clicks: current ? newClicks : 0 };
+    }
 
     if (db.isPostgresActive) {
       // 1. Incrementar contador en ranking
@@ -166,6 +242,62 @@ export class RankingService {
     const duration = ad.durationHours || 24;
     const startTime = new Date();
     const endTime = new Date(startTime.getTime() + duration * 3600 * 1000);
+
+    if (supabase) {
+      if (ad.position === 1) {
+        await supabase
+          .from('ranking')
+          .delete()
+          .eq('zone_key', zoneKey)
+          .gte('position', 10);
+
+        const { data: existing, error: existingErr } = await supabase
+          .from('ranking')
+          .select('id, position')
+          .eq('zone_key', zoneKey)
+          .gte('position', 1)
+          .lt('position', 10)
+          .order('position', { ascending: false });
+        if (existingErr) throw new Error(existingErr.message);
+
+        for (const row of existing || []) {
+          const newPos = row.position + 1;
+          const newTier = newPos <= 3 ? 'silver' : 'dark';
+          const { error: shiftErr } = await supabase
+            .from('ranking')
+            .update({ position: newPos, tier: newTier })
+            .eq('id', row.id);
+          if (shiftErr) throw new Error(shiftErr.message);
+        }
+      }
+
+      const { error: upsertErr } = await supabase
+        .from('ranking')
+        .upsert(
+          {
+            position: ad.position,
+            user_id: ad.userId || null,
+            payment_id: ad.paymentId || null,
+            business_name: ad.businessName,
+            target_url: ad.targetUrl,
+            slogan: ad.slogan,
+            category: ad.category,
+            avatar: ad.avatar,
+            tier,
+            amount_paid: ad.amountPaid,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            clicks_received: 1,
+            views_received: 10,
+            is_active: true,
+            zone_key: zoneKey
+          },
+          { onConflict: 'zone_key,position' }
+        );
+      if (upsertErr) throw new Error(upsertErr.message);
+
+      return this.getTop10(zoneKey);
+    }
 
     if (db.isPostgresActive) {
       // Si entra en puesto 1, desplazar los puestos existentes en orden descendente dentro de la misma zona

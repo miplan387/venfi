@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dashboardService = exports.DashboardService = void 0;
 const db_1 = require("../database/db");
+const supabase_1 = require("../database/supabase");
 class DashboardService {
     /**
      * Obtiene el resumen general de métricas del anunciante
@@ -62,7 +63,44 @@ class DashboardService {
             { city: 'Madrid', country: 'España', flag: '🇪🇸', clicks: 72, percentage: 6.0 },
             { city: 'Bogotá', country: 'Colombia', flag: '🇨🇴', clicks: 48, percentage: 4.0 }
         ];
-        if (db_1.db.isPostgresActive) {
+        if (supabase_1.supabase) {
+            try {
+                const { data: rows, error } = await supabase_1.supabase
+                    .from('clicks_log')
+                    .select('city, country')
+                    .or(`user_id.eq.${userId},user_id.is.null`);
+                if (!error && rows && rows.length > 0) {
+                    const counts = new Map();
+                    for (const r of rows) {
+                        const key = `${r.city}__${r.country}`;
+                        const existing = counts.get(key);
+                        if (existing) {
+                            existing.clicks += 1;
+                        }
+                        else {
+                            counts.set(key, { city: r.city, country: r.country, clicks: 1 });
+                        }
+                    }
+                    const grouped = Array.from(counts.values())
+                        .sort((a, b) => b.clicks - a.clicks)
+                        .slice(0, 6);
+                    if (grouped.length >= 3) {
+                        const total = grouped.reduce((acc, r) => acc + r.clicks, 0);
+                        return grouped.map(r => ({
+                            city: r.city,
+                            country: r.country,
+                            flag: r.country === 'Venezuela' ? '🇻🇪' : (r.country === 'Estados Unidos' ? '🇺🇸' : '🇪🇸'),
+                            clicks: r.clicks,
+                            percentage: total > 0 ? Number(((r.clicks / total) * 100).toFixed(1)) : 0
+                        }));
+                    }
+                }
+            }
+            catch (err) {
+                // Fallback a defaultCities
+            }
+        }
+        else if (db_1.db.isPostgresActive) {
             try {
                 const res = await db_1.db.query(`SELECT city, country, COUNT(*) as clicks
            FROM clicks_log
@@ -92,7 +130,42 @@ class DashboardService {
      */
     async getActiveCampaigns(userId) {
         const now = new Date();
-        if (db_1.db.isPostgresActive) {
+        if (supabase_1.supabase) {
+            const { data: rows, error } = await supabase_1.supabase
+                .from('ranking')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('is_active', true)
+                .order('position', { ascending: true });
+            if (error)
+                throw new Error(error.message);
+            return (rows || []).map((r) => {
+                const endTime = r.end_time ? new Date(r.end_time) : new Date(Date.now() + 24 * 3600 * 1000);
+                const hoursRemaining = Math.max(0, Number(((endTime.getTime() - now.getTime()) / (3600 * 1000)).toFixed(1)));
+                const views = r.views_received || 250;
+                const clicks = r.clicks_received || 28;
+                const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
+                return {
+                    id: r.id,
+                    position: r.position,
+                    tier: r.tier,
+                    businessName: r.business_name,
+                    slogan: r.slogan,
+                    targetUrl: r.target_url,
+                    avatar: r.avatar || '🚀',
+                    category: r.category || 'General',
+                    amountPaid: Number(r.amount_paid || 15),
+                    startTime: r.start_time,
+                    endTime: endTime.toISOString(),
+                    hoursRemaining,
+                    clicksReceived: clicks,
+                    viewsReceived: views,
+                    ctr,
+                    paymentId: r.payment_id
+                };
+            });
+        }
+        else if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`SELECT r.*, p.payment_method
          FROM ranking r
          LEFT JOIN payments p ON r.payment_id = p.id
@@ -155,7 +228,17 @@ class DashboardService {
      * Obtiene el historial de facturación y pagos del usuario
      */
     async getPaymentHistory(userId) {
-        if (db_1.db.isPostgresActive) {
+        if (supabase_1.supabase) {
+            const { data, error } = await supabase_1.supabase
+                .from('payments')
+                .select('id, amount_usd, position, duration_hours, status, payment_method, tx_hash, business_name, created_at, expires_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+            if (error)
+                throw new Error(error.message);
+            return data || [];
+        }
+        else if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`SELECT id, amount_usd, position, duration_hours, status, payment_method, tx_hash, business_name, created_at, expires_at
          FROM payments
          WHERE user_id = $1
@@ -186,7 +269,18 @@ class DashboardService {
      * Obtiene las notificaciones del usuario
      */
     async getUserNotifications(userId) {
-        if (db_1.db.isPostgresActive) {
+        if (supabase_1.supabase) {
+            const { data, error } = await supabase_1.supabase
+                .from('notifications')
+                .select('id, message, type, created_at, is_read')
+                .or(`user_id.eq.${userId},user_id.is.null`)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            if (error)
+                throw new Error(error.message);
+            return data || [];
+        }
+        else if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`SELECT id, message, type, created_at, is_read
          FROM notifications
          WHERE user_id = $1 OR user_id IS NULL

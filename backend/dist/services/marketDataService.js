@@ -7,6 +7,7 @@ exports.marketDataService = exports.MarketDataService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const env_1 = require("../config/env");
 const db_1 = require("../database/db");
+const supabase_1 = require("../database/supabase");
 class MarketDataService {
     cache = null;
     lastFetched = 0;
@@ -172,7 +173,17 @@ class MarketDataService {
         const roundedPrice = Number(price.toFixed(2));
         const targetDate = dateStr || new Date().toISOString().split('T')[0];
         try {
-            if (db_1.db.isPostgresActive) {
+            if (supabase_1.supabase) {
+                await supabase_1.supabase
+                    .from('commodity_history')
+                    .upsert({
+                    commodity_type: commodityType,
+                    price_usd: roundedPrice,
+                    recorded_at: targetDate,
+                    created_at: new Date().toISOString()
+                }, { onConflict: 'commodity_type,recorded_at' });
+            }
+            else if (db_1.db.isPostgresActive) {
                 await db_1.db.query(`INSERT INTO commodity_history (commodity_type, price_usd, recorded_at)
            VALUES ($1, $2, $3)
            ON CONFLICT (commodity_type, recorded_at)
@@ -226,7 +237,19 @@ class MarketDataService {
         const days = Math.min(Math.max(Number(daysParam) || 7, 2), 90);
         let rows = [];
         try {
-            if (db_1.db.isPostgresActive) {
+            if (supabase_1.supabase) {
+                const { data } = await supabase_1.supabase
+                    .from('commodity_history')
+                    .select('recorded_at, price_usd')
+                    .eq('commodity_type', commodityType)
+                    .order('recorded_at', { ascending: false })
+                    .limit(days);
+                rows = (data || []).map((r) => ({
+                    recorded_at: typeof r.recorded_at === 'string' ? r.recorded_at.split('T')[0] : new Date(r.recorded_at).toISOString().split('T')[0],
+                    price_usd: Number(r.price_usd)
+                }));
+            }
+            else if (db_1.db.isPostgresActive) {
                 const res = await db_1.db.query(`SELECT recorded_at::text as recorded_at, price_usd 
            FROM commodity_history 
            WHERE commodity_type = $1 

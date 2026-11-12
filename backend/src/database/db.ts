@@ -38,8 +38,33 @@ class DatabaseManager {
     rates_history: [],
     zelle_payments: [],
     commodity_history: [],
-    zones: [],
-    zone_pricing: [],
+    zones: [
+      { id: 1, key: 'nacional', name: 'Nacional', type: 'national', icon: '🇻🇪', is_active: true, sort_order: 1 },
+      { id: 2, key: 'caracas', name: 'Caracas', type: 'city', icon: '🏙️', is_active: true, sort_order: 2 },
+      { id: 3, key: 'maracaibo', name: 'Maracaibo', type: 'city', icon: '⚡', is_active: true, sort_order: 3 },
+      { id: 4, key: 'valencia', name: 'Valencia', type: 'city', icon: '🏭', is_active: true, sort_order: 4 }
+    ],
+    zone_pricing: [
+      { id: 1, zone_key: 'nacional', position: 1, tier: 'top1', price_usd: 10.00, duration_hours: 24, is_active: true },
+      { id: 2, zone_key: 'nacional', position: 2, tier: 'top2', price_usd: 6.00, duration_hours: 24, is_active: true },
+      { id: 3, zone_key: 'nacional', position: 3, tier: 'top3', price_usd: 6.00, duration_hours: 24, is_active: true },
+      { id: 4, zone_key: 'nacional', position: 4, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 5, zone_key: 'nacional', position: 5, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 6, zone_key: 'nacional', position: 6, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 7, zone_key: 'nacional', position: 7, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 8, zone_key: 'nacional', position: 8, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 9, zone_key: 'nacional', position: 9, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 10, zone_key: 'nacional', position: 10, tier: 'top4_10', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 11, zone_key: 'caracas', position: 1, tier: 'top1', price_usd: 10.00, duration_hours: 24, is_active: true },
+      { id: 12, zone_key: 'caracas', position: 2, tier: 'top2', price_usd: 6.00, duration_hours: 24, is_active: true },
+      { id: 13, zone_key: 'caracas', position: 3, tier: 'top3', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 14, zone_key: 'maracaibo', position: 1, tier: 'top1', price_usd: 10.00, duration_hours: 24, is_active: true },
+      { id: 15, zone_key: 'maracaibo', position: 2, tier: 'top2', price_usd: 6.00, duration_hours: 24, is_active: true },
+      { id: 16, zone_key: 'maracaibo', position: 3, tier: 'top3', price_usd: 4.00, duration_hours: 24, is_active: true },
+      { id: 17, zone_key: 'valencia', position: 1, tier: 'top1', price_usd: 10.00, duration_hours: 24, is_active: true },
+      { id: 18, zone_key: 'valencia', position: 2, tier: 'top2', price_usd: 6.00, duration_hours: 24, is_active: true },
+      { id: 19, zone_key: 'valencia', position: 3, tier: 'top3', price_usd: 4.00, duration_hours: 24, is_active: true }
+    ],
     visits: [
       { id: 1, total_visits: 0, active_users: 1, last_updated: new Date().toISOString() }
     ],

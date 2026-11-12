@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { adminController } from '../controllers/adminController';
+import { zonesController } from '../controllers/zonesController';
 import { optionalAuthMiddleware } from '../middleware/authMiddleware';
 import { requireAdmin } from '../middleware/adminMiddleware';
 
@@ -31,6 +32,28 @@ router.post('/cards/:id/renew', (req, res) => {
 // 5. Eliminar / Restablecer tarjeta a espacio disponible
 router.delete('/cards/:id', (req, res) => {
   adminController.deleteCard(req, res);
+});
+
+// 6. KPIs del Centro de Control
+router.get('/kpis', (req, res) => {
+  adminController.getKpis(req, res);
+});
+
+// 7. Gestión de Precios y Duración (zone_pricing CRUD)
+router.get('/pricing', (req, res) => {
+  zonesController.getAllPricing(req, res);
+});
+
+router.post('/pricing', (req, res) => {
+  zonesController.createPricing(req, res);
+});
+
+router.put('/pricing/:id', (req, res) => {
+  zonesController.updatePricing(req, res);
+});
+
+router.delete('/pricing/:id', (req, res) => {
+  zonesController.deletePricing(req, res);
 });
 
 export default router;

@@ -6,16 +6,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ratesService = exports.RatesService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const db_1 = require("../database/db");
+const supabase_1 = require("../database/supabase");
 class RatesService {
     cache = null;
     lastFetched = 0;
     CACHE_TTL_MS = 60 * 1000; // 60 segundos TTL
-    // Valores de respaldo Nivel 3 (Estáticos)
+    // Valores de respaldo Nivel 3 (Estáticos actualizados al mercado)
     STATIC_FALLBACKS = {
-        bcv: 787.52,
-        paralelo: 931.28,
-        usdt: 933.15,
-        euro: 919.15,
+        bcv: 904.45,
+        paralelo: 1065.03,
+        usdt: 1067.16,
+        euro: 1003.49,
         // Monedas de Latinoamérica (por 1 USD)
         cop: 4120.50, // Colombia
         pen: 3.75, // Perú
@@ -28,7 +29,19 @@ class RatesService {
      */
     async saveRateHistory(rateType, buy, sell, avg, variationAbs = 0, variationPct = 0, direction = 'same') {
         try {
-            if (db_1.db.isPostgresActive) {
+            if (supabase_1.supabase) {
+                await supabase_1.supabase.from('rates_history').insert([{
+                        rate_type: rateType,
+                        buy_rate: buy,
+                        sell_rate: sell,
+                        avg_rate: avg,
+                        variation_abs: variationAbs,
+                        variation_pct: variationPct,
+                        direction,
+                        last_updated: new Date().toISOString()
+                    }]);
+            }
+            else if (db_1.db.isPostgresActive) {
                 await db_1.db.query(`INSERT INTO rates_history (rate_type, buy_rate, sell_rate, avg_rate, variation_abs, variation_pct, direction, last_updated)
            VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`, [rateType, buy, sell, avg, variationAbs, variationPct, direction]);
             }
@@ -56,7 +69,18 @@ class RatesService {
      */
     async getLatestDbRate(rateType) {
         try {
-            if (db_1.db.isPostgresActive) {
+            if (supabase_1.supabase) {
+                const { data } = await supabase_1.supabase
+                    .from('rates_history')
+                    .select('avg_rate')
+                    .eq('rate_type', rateType)
+                    .order('last_updated', { ascending: false })
+                    .limit(1);
+                if (data && data.length > 0) {
+                    return Number(data[0].avg_rate);
+                }
+            }
+            else if (db_1.db.isPostgresActive) {
                 const res = await db_1.db.query(`SELECT avg_rate FROM rates_history 
            WHERE rate_type = $1 
            ORDER BY last_updated DESC 
@@ -84,7 +108,27 @@ class RatesService {
     async getVariation(rateType, currentRate) {
         try {
             let previousRate = null;
-            if (db_1.db.isPostgresActive) {
+            if (supabase_1.supabase) {
+                const { data: rows } = await supabase_1.supabase
+                    .from('rates_history')
+                    .select('avg_rate, variation_abs, variation_pct, direction')
+                    .eq('rate_type', rateType)
+                    .order('last_updated', { ascending: false })
+                    .limit(5);
+                if (rows && rows.length >= 1) {
+                    for (let i = 0; i < rows.length; i++) {
+                        const val = Number(rows[i].avg_rate);
+                        if (val > 0 && Math.abs(val - currentRate) > 0.001) {
+                            previousRate = val;
+                            break;
+                        }
+                    }
+                    if (!previousRate && rows.length >= 2) {
+                        previousRate = Number(rows[1].avg_rate);
+                    }
+                }
+            }
+            else if (db_1.db.isPostgresActive) {
                 const res = await db_1.db.query(`SELECT avg_rate, variation_abs, variation_pct, direction 
            FROM rates_history 
            WHERE rate_type = $1 
@@ -184,26 +228,42 @@ class RatesService {
         let usdtSource = 'live_api';
         let euroSource = 'live_api';
         try {
+            const axiosConfig = {
+                timeout: 6000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'application/json'
+                }
+            };
             const [oficialRes, paraleloRes, euroRes] = await Promise.allSettled([
-                axios_1.default.get('https://ve.dolarapi.com/v1/dolares/oficial', { timeout: 2500 }),
-                axios_1.default.get('https://ve.dolarapi.com/v1/dolares/paralelo', { timeout: 2500 }),
-                axios_1.default.get('https://ve.dolarapi.com/v1/euros/oficial', { timeout: 2500 })
+                axios_1.default.get('https://ve.dolarapi.com/v1/dolares/oficial', axiosConfig),
+                axios_1.default.get('https://ve.dolarapi.com/v1/dolares/paralelo', axiosConfig),
+                axios_1.default.get('https://ve.dolarapi.com/v1/euros/oficial', axiosConfig)
             ]);
             if (oficialRes.status === 'fulfilled' && oficialRes.value?.data?.promedio) {
                 bcvRate = Number(oficialRes.value.data.promedio);
             }
+            else if (oficialRes.status === 'rejected') {
+                console.error('❌ [ratesService] Error al consultar BCV oficial DolarAPI:', oficialRes.reason?.message || oficialRes.reason);
+            }
             if (paraleloRes.status === 'fulfilled' && paraleloRes.value?.data?.promedio) {
                 paraleloRate = Number(paraleloRes.value.data.promedio);
             }
+            else if (paraleloRes.status === 'rejected') {
+                console.error('❌ [ratesService] Error al consultar Paralelo DolarAPI:', paraleloRes.reason?.message || paraleloRes.reason);
+            }
             if (euroRes.status === 'fulfilled' && euroRes.value?.data?.promedio) {
                 euroRate = Number(euroRes.value.data.promedio);
+            }
+            else if (euroRes.status === 'rejected') {
+                console.error('❌ [ratesService] Error al consultar Euro DolarAPI:', euroRes.reason?.message || euroRes.reason);
             }
             if (paraleloRate) {
                 usdtRate = Number((paraleloRate * 1.002).toFixed(2));
             }
         }
         catch (err) {
-            console.warn('[ratesService] Falló la consulta a DolarAPI:', err.message);
+            console.error('❌ [ratesService] Falló la consulta general a DolarAPI:', err.message);
         }
         // 3. Aplicar Fallback Nivel 2 (Base de Datos) si alguna tasa falló
         if (!bcvRate) {
@@ -428,7 +488,34 @@ class RatesService {
     async getHistory(rateType = 'bcv', days = 7) {
         const typeKey = rateType.toLowerCase();
         let records = [];
-        if (db_1.db.isPostgresActive) {
+        if (supabase_1.supabase) {
+            try {
+                const sinceIso = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+                const { data, error } = await supabase_1.supabase
+                    .from('rates_history')
+                    .select('id, rate_type, avg_rate, variation_abs, variation_pct, direction, last_updated')
+                    .in('rate_type', [typeKey, rateType])
+                    .gte('last_updated', sinceIso)
+                    .order('last_updated', { ascending: true });
+                if (!error && data) {
+                    records = data.map((row) => {
+                        const d = new Date(row.last_updated);
+                        return {
+                            date: row.last_updated,
+                            formattedDate: d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
+                            rate: Number(row.avg_rate),
+                            variation_abs: row.variation_abs !== null ? Number(row.variation_abs) : null,
+                            variation_pct: row.variation_pct !== null ? Number(row.variation_pct) : null,
+                            direction: row.direction || 'same'
+                        };
+                    });
+                }
+            }
+            catch (err) {
+                console.warn(`[ratesService] Error al consultar historial en Supabase para ${rateType}:`, err.message);
+            }
+        }
+        else if (db_1.db.isPostgresActive) {
             try {
                 const res = await db_1.db.query(`SELECT id, rate_type, avg_rate, variation_abs, variation_pct, direction, last_updated 
            FROM rates_history 

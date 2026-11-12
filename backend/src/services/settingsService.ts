@@ -1,4 +1,5 @@
 import { db } from '../database/db';
+import { supabase } from '../database/supabase';
 import { paymentService } from './paymentService';
 
 export interface PaymentSettingItem {
@@ -12,6 +13,23 @@ class SettingsService {
    * Obtiene todos los ajustes de configuración de pagos
    */
   public async getPaymentSettings(): Promise<Record<string, any>> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('key, value, updated_at')
+        .order('key', { ascending: true });
+      if (error) throw new Error(error.message);
+
+      const settingsMap: Record<string, any> = {};
+      for (const row of data || []) {
+        settingsMap[row.key] = {
+          ...row.value,
+          updated_at: row.updated_at
+        };
+      }
+      return settingsMap;
+    }
+
     if (db.isPostgresActive) {
       const res = await db.query('SELECT key, value, updated_at FROM payment_settings ORDER BY key ASC');
       const settingsMap: Record<string, any> = {};
@@ -39,6 +57,20 @@ class SettingsService {
    * Obtiene la configuración de un método de pago por su key
    */
   public async getPaymentSettingByKey(key: string): Promise<Record<string, any> | null> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('key, value, updated_at')
+        .eq('key', key)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+      return {
+        ...data.value,
+        updated_at: data.updated_at
+      };
+    }
+
     if (db.isPostgresActive) {
       const res = await db.query('SELECT key, value, updated_at FROM payment_settings WHERE key = $1', [key]);
       if (res.rows.length === 0) return null;
@@ -63,6 +95,37 @@ class SettingsService {
   public async updatePaymentSetting(key: string, value: Record<string, any>): Promise<Record<string, any>> {
     // Si viene anidado en value, desempaquetar
     const cleanValue = value.value !== undefined ? value.value : value;
+
+    if (supabase) {
+      const { data: updated, error } = await supabase
+        .from('payment_settings')
+        .upsert(
+          {
+            key,
+            value: cleanValue,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'key' }
+        )
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+
+      if (key === 'pago_movil') {
+        paymentService.updatePagoMovilBankData({
+          bank: cleanValue.bank,
+          phone: cleanValue.phone,
+          idNumber: cleanValue.idNumber,
+          beneficiaryName: cleanValue.beneficiary || cleanValue.beneficiaryName
+        });
+      }
+
+      return {
+        key: updated.key,
+        value: updated.value,
+        updated_at: updated.updated_at
+      };
+    }
 
     if (db.isPostgresActive) {
       const res = await db.query(

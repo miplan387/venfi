@@ -12,9 +12,10 @@ export const requireAdmin = (
     return;
   }
 
-  // Permitir en entorno local de desarrollo si se pasa header 'x-admin-key: venfi-admin-2026'
+  // Permitir si coincide con ADMIN_KEY configurado (o clave de desarrollo solo fuera de producción)
   const adminKey = req.headers['x-admin-key'];
-  if (adminKey === 'venfi-admin-2026') {
+  const expectedAdminKey = process.env.ADMIN_KEY || (process.env.NODE_ENV !== 'production' ? 'venfi-admin-2026' : '');
+  if (expectedAdminKey && adminKey === expectedAdminKey) {
     req.user = {
       userId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       email: 'soporte@venfidata.com',

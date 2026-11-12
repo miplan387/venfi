@@ -47,21 +47,25 @@ class VisitsService {
         try {
             // 1. Prioridad: API REST de Supabase (HTTPS / Puerto 443)
             if (supabase_1.supabase) {
+                console.log('[VISITS] Usando Supabase REST para leer estadísticas');
                 const { data: row, error: selectError } = await supabase_1.supabase
                     .from('visits')
                     .select('total_visits, active_users, last_updated')
                     .eq('id', 1)
                     .maybeSingle();
                 if (selectError) {
+                    console.error('[VISITS] Error en consulta Supabase:', selectError.message);
                     throw new Error(selectError.message);
                 }
                 if (!row) {
+                    console.log('[VISITS] Registro id=1 no encontrado en Supabase, inicializando...');
                     const { data: inserted, error: insertError } = await supabase_1.supabase
                         .from('visits')
                         .upsert({ id: 1, total_visits: 0, active_users: activeCount, last_updated: nowIso }, { onConflict: 'id' })
                         .select('total_visits, active_users, last_updated')
                         .single();
                     if (insertError) {
+                        console.error('[VISITS] Error al inicializar en Supabase:', insertError.message);
                         throw new Error(insertError.message);
                     }
                     return this.syncStats(Number(inserted?.total_visits || 0), activeCount, inserted?.last_updated || nowIso);
@@ -72,12 +76,13 @@ class VisitsService {
                     .update({ active_users: activeCount, last_updated: nowIso })
                     .eq('id', 1);
                 if (updateError) {
-                    console.warn('⚠️ Error al actualizar active_users en Supabase:', updateError.message);
+                    console.warn('⚠️ [VISITS] Error al actualizar active_users en Supabase:', updateError.message);
                 }
                 return this.syncStats(totalVisits, activeCount, row.last_updated || nowIso);
             }
             // 2. Respaldo local: Pool PostgreSQL directo
             if (db_1.db.isPostgresActive) {
+                console.log('[VISITS] Usando PostgreSQL Pool directo para leer estadísticas');
                 await db_1.db.query(`
           INSERT INTO visits (id, total_visits, active_users, last_updated)
           VALUES (1, 0, $1, NOW())
@@ -93,9 +98,10 @@ class VisitsService {
             }
         }
         catch (err) {
-            console.warn('⚠️ Error al consultar tabla visits en DB, usando respaldo en memoria:', err.message);
+            console.warn('⚠️ [VISITS] Error al consultar tabla visits en DB:', err.message);
         }
         // 3. Fallback en memoria si la BD no está disponible
+        console.log('[VISITS] Usando Fallback de Memoria para estadísticas (total:', this.fallbackStats.totalVisits, ')');
         return this.syncStats(this.fallbackStats.totalVisits, activeCount, nowIso);
     }
     /**
@@ -109,21 +115,25 @@ class VisitsService {
         try {
             // 1. Prioridad: API REST de Supabase (HTTPS / Puerto 443)
             if (supabase_1.supabase) {
+                console.log('[VISITS] Usando Supabase REST para incrementar visitas');
                 const { data: currentRow, error: selectError } = await supabase_1.supabase
                     .from('visits')
                     .select('total_visits')
                     .eq('id', 1)
                     .maybeSingle();
                 if (selectError) {
+                    console.error('[VISITS] Error al leer total_visits en Supabase:', selectError.message);
                     throw new Error(selectError.message);
                 }
                 if (!currentRow) {
+                    console.log('[VISITS] Registro id=1 no encontrado en Supabase, inicializando en 1...');
                     const { data: created, error: insertError } = await supabase_1.supabase
                         .from('visits')
                         .upsert({ id: 1, total_visits: 1, active_users: activeCount, last_updated: nowIso }, { onConflict: 'id' })
                         .select('total_visits, active_users, last_updated')
                         .single();
                     if (insertError) {
+                        console.error('[VISITS] Error al insertar registro inicial en Supabase:', insertError.message);
                         throw new Error(insertError.message);
                     }
                     return this.syncStats(Number(created?.total_visits || 1), activeCount, created?.last_updated || nowIso);
@@ -140,12 +150,14 @@ class VisitsService {
                     .select('total_visits, active_users, last_updated')
                     .single();
                 if (updateError) {
+                    console.error('[VISITS] Error al actualizar total_visits en Supabase:', updateError.message);
                     throw new Error(updateError.message);
                 }
                 return this.syncStats(Number(updated?.total_visits ?? nextTotal), activeCount, updated?.last_updated || nowIso);
             }
             // 2. Respaldo local: Pool PostgreSQL directo
             if (db_1.db.isPostgresActive) {
+                console.log('[VISITS] Usando PostgreSQL Pool directo para incrementar visitas');
                 await db_1.db.query(`
           INSERT INTO visits (id, total_visits, active_users, last_updated)
           VALUES (1, 0, $1, NOW())
@@ -166,9 +178,10 @@ class VisitsService {
             }
         }
         catch (err) {
-            console.warn('⚠️ Error al incrementar visits en DB:', err.message);
+            console.warn('⚠️ [VISITS] Error al incrementar visits en DB:', err.message);
         }
         // 3. Fallback en memoria si la base de datos está offline
+        console.log('[VISITS] Usando Fallback de Memoria para incremento (total:', this.fallbackStats.totalVisits + 1, ')');
         return this.syncStats(this.fallbackStats.totalVisits + 1, activeCount, nowIso);
     }
     /**

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const adminController_1 = require("../controllers/adminController");
+const zonesController_1 = require("../controllers/zonesController");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const adminMiddleware_1 = require("../middleware/adminMiddleware");
 const router = (0, express_1.Router)();
@@ -26,6 +27,23 @@ router.post('/cards/:id/renew', (req, res) => {
 // 5. Eliminar / Restablecer tarjeta a espacio disponible
 router.delete('/cards/:id', (req, res) => {
     adminController_1.adminController.deleteCard(req, res);
+});
+// 6. KPIs del Centro de Control
+router.get('/kpis', (req, res) => {
+    adminController_1.adminController.getKpis(req, res);
+});
+// 7. Gestión de Precios y Duración (zone_pricing CRUD)
+router.get('/pricing', (req, res) => {
+    zonesController_1.zonesController.getAllPricing(req, res);
+});
+router.post('/pricing', (req, res) => {
+    zonesController_1.zonesController.createPricing(req, res);
+});
+router.put('/pricing/:id', (req, res) => {
+    zonesController_1.zonesController.updatePricing(req, res);
+});
+router.delete('/pricing/:id', (req, res) => {
+    zonesController_1.zonesController.deletePricing(req, res);
 });
 exports.default = router;
 //# sourceMappingURL=adminRoutes.js.map

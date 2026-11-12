@@ -2,7 +2,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paymentMethodsService = exports.deleteMethod = exports.toggleActive = exports.update = exports.create = exports.getByKey = exports.getActive = exports.getAll = void 0;
 const db_1 = require("../database/db");
+const supabase_1 = require("../database/supabase");
 const getAll = async () => {
+    if (supabase_1.supabase) {
+        const { data, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .select('*')
+            .order('sort_order', { ascending: true })
+            .order('id', { ascending: true });
+        if (error)
+            throw new Error(error.message);
+        return data || [];
+    }
     if (db_1.db.isPostgresActive) {
         const result = await db_1.pool.query('SELECT * FROM payment_methods ORDER BY sort_order ASC, id ASC');
         return result.rows;
@@ -12,6 +23,17 @@ const getAll = async () => {
 };
 exports.getAll = getAll;
 const getActive = async () => {
+    if (supabase_1.supabase) {
+        const { data, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true })
+            .order('id', { ascending: true });
+        if (error)
+            throw new Error(error.message);
+        return data || [];
+    }
     if (db_1.db.isPostgresActive) {
         const result = await db_1.pool.query('SELECT * FROM payment_methods WHERE is_active = true ORDER BY sort_order ASC, id ASC');
         return result.rows;
@@ -23,6 +45,16 @@ const getActive = async () => {
 };
 exports.getActive = getActive;
 const getByKey = async (key) => {
+    if (supabase_1.supabase) {
+        const { data, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .select('*')
+            .eq('key', key)
+            .maybeSingle();
+        if (error)
+            throw new Error(error.message);
+        return data || null;
+    }
     if (db_1.db.isPostgresActive) {
         const result = await db_1.pool.query('SELECT * FROM payment_methods WHERE key = $1', [key]);
         return result.rows[0] || null;
@@ -32,6 +64,25 @@ const getByKey = async (key) => {
 };
 exports.getByKey = getByKey;
 const create = async (data) => {
+    if (supabase_1.supabase) {
+        const { data: created, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .insert([{
+                key: data.key,
+                name: data.name,
+                icon: data.icon || '💳',
+                description: data.description || '',
+                fields: data.fields || {},
+                is_active: data.is_active !== undefined ? data.is_active : true,
+                requires_approval: data.requires_approval !== undefined ? data.requires_approval : false,
+                sort_order: data.sort_order || 0
+            }])
+            .select()
+            .single();
+        if (error)
+            throw new Error(error.message);
+        return created;
+    }
     if (db_1.db.isPostgresActive) {
         const result = await db_1.pool.query(`INSERT INTO payment_methods (key, name, icon, description, fields, is_active, requires_approval, sort_order)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -66,6 +117,28 @@ const create = async (data) => {
 };
 exports.create = create;
 const update = async (key, data) => {
+    if (supabase_1.supabase) {
+        const updatePayload = {};
+        const allowedFields = ['name', 'icon', 'description', 'fields', 'is_active', 'requires_approval', 'sort_order'];
+        for (const field of allowedFields) {
+            if (data[field] !== undefined) {
+                updatePayload[field] = data[field];
+            }
+        }
+        if (Object.keys(updatePayload).length === 0) {
+            throw new Error('No se proporcionaron campos para actualizar');
+        }
+        updatePayload.updated_at = new Date().toISOString();
+        const { data: updated, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .update(updatePayload)
+            .eq('key', key)
+            .select()
+            .maybeSingle();
+        if (error)
+            throw new Error(error.message);
+        return updated || null;
+    }
     if (db_1.db.isPostgresActive) {
         const updates = [];
         const values = [];
@@ -107,6 +180,17 @@ const toggleActive = async (key) => {
     if (!current)
         throw new Error('Método no encontrado');
     const newStatus = !current.is_active;
+    if (supabase_1.supabase) {
+        const { data: updated, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+            .eq('key', key)
+            .select()
+            .maybeSingle();
+        if (error)
+            throw new Error(error.message);
+        return updated || null;
+    }
     if (db_1.db.isPostgresActive) {
         const result = await db_1.pool.query('UPDATE payment_methods SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2 RETURNING *', [newStatus, key]);
         return result.rows[0] || null;
@@ -121,6 +205,17 @@ const toggleActive = async (key) => {
 };
 exports.toggleActive = toggleActive;
 const deleteMethod = async (key) => {
+    if (supabase_1.supabase) {
+        const { data, error } = await supabase_1.supabase
+            .from('payment_methods')
+            .delete()
+            .eq('key', key)
+            .select('key')
+            .maybeSingle();
+        if (error)
+            throw new Error(error.message);
+        return data || null;
+    }
     if (db_1.db.isPostgresActive) {
         const result = await db_1.pool.query('DELETE FROM payment_methods WHERE key = $1 RETURNING key', [key]);
         return result.rows[0] || null;

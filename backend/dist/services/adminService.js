@@ -2,12 +2,63 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminService = exports.AdminService = void 0;
 const db_1 = require("../database/db");
+const supabase_1 = require("../database/supabase");
 class AdminService {
     /**
      * Obtiene todas las tarjetas del ranking con datos del anunciante y pagos
      */
     async getAllCards() {
         const now = new Date();
+        if (supabase_1.supabase) {
+            const { data: rows, error } = await supabase_1.supabase
+                .from('ranking')
+                .select('*')
+                .order('position', { ascending: true });
+            if (error)
+                throw new Error(error.message);
+            const rankingRows = rows || [];
+            const userIds = Array.from(new Set(rankingRows.map((r) => r.user_id).filter(Boolean)));
+            const paymentIds = Array.from(new Set(rankingRows.map((r) => r.payment_id).filter(Boolean)));
+            const { data: users } = userIds.length
+                ? await supabase_1.supabase.from('users').select('id, email, username').in('id', userIds)
+                : { data: [] };
+            const { data: payments } = paymentIds.length
+                ? await supabase_1.supabase.from('payments').select('id, payment_method, status').in('id', paymentIds)
+                : { data: [] };
+            const userMap = new Map((users || []).map((u) => [String(u.id), u]));
+            const paymentMap = new Map((payments || []).map((p) => [String(p.id), p]));
+            return rankingRows.map((row) => {
+                const u = row.user_id ? userMap.get(String(row.user_id)) : null;
+                const p = row.payment_id ? paymentMap.get(String(row.payment_id)) : null;
+                const endTime = row.end_time ? new Date(row.end_time) : null;
+                const hoursRemaining = endTime
+                    ? Math.max(0, Number(((endTime.getTime() - now.getTime()) / (3600 * 1000)).toFixed(1)))
+                    : 0;
+                return {
+                    id: row.id,
+                    position: row.position,
+                    businessName: row.business_name,
+                    slogan: row.slogan,
+                    targetUrl: row.target_url,
+                    category: row.category,
+                    avatar: row.avatar,
+                    tier: row.tier,
+                    amountPaid: Number(row.amount_paid || 0),
+                    clicksReceived: row.clicks_received || 0,
+                    viewsReceived: row.views_received || 0,
+                    isActive: row.is_active,
+                    startTime: row.start_time,
+                    endTime: row.end_time,
+                    hoursRemaining,
+                    paymentId: row.payment_id,
+                    userId: row.user_id,
+                    advertiserEmail: u?.email || 'Sin usuario registrado',
+                    advertiserUsername: u?.username || 'Pauta Directa',
+                    paymentMethod: p?.payment_method || 'direct',
+                    paymentStatus: p?.status || 'completed'
+                };
+            });
+        }
         if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`SELECT 
           r.id,
@@ -102,6 +153,36 @@ class AdminService {
      */
     async updateCard(cardId, data) {
         const idNum = Number(cardId);
+        if (supabase_1.supabase) {
+            const { data: current, error: fetchErr } = await supabase_1.supabase
+                .from('ranking')
+                .select('*')
+                .eq('id', idNum)
+                .maybeSingle();
+            if (fetchErr)
+                throw new Error(fetchErr.message);
+            if (!current) {
+                throw new Error(`Tarjeta con ID ${cardId} no encontrada`);
+            }
+            const { data: updated, error: updateErr } = await supabase_1.supabase
+                .from('ranking')
+                .update({
+                business_name: data.businessName ?? current.business_name,
+                slogan: data.slogan ?? current.slogan,
+                target_url: data.targetUrl ?? current.target_url,
+                category: data.category ?? current.category,
+                avatar: data.avatar ?? current.avatar,
+                tier: data.tier ?? current.tier,
+                amount_paid: data.amountPaid ?? current.amount_paid,
+                is_active: data.isActive !== undefined ? data.isActive : current.is_active
+            })
+                .eq('id', idNum)
+                .select()
+                .single();
+            if (updateErr)
+                throw new Error(updateErr.message);
+            return updated;
+        }
         if (db_1.db.isPostgresActive) {
             const currentRes = await db_1.db.query('SELECT * FROM ranking WHERE id = $1', [idNum]);
             if (currentRes.rows.length === 0) {
@@ -157,6 +238,27 @@ class AdminService {
      */
     async toggleCardStatus(cardId) {
         const idNum = Number(cardId);
+        if (supabase_1.supabase) {
+            const { data: current, error: fetchErr } = await supabase_1.supabase
+                .from('ranking')
+                .select('id, is_active')
+                .eq('id', idNum)
+                .maybeSingle();
+            if (fetchErr)
+                throw new Error(fetchErr.message);
+            if (!current) {
+                throw new Error(`Tarjeta con ID ${cardId} no encontrada`);
+            }
+            const { data: updated, error: updateErr } = await supabase_1.supabase
+                .from('ranking')
+                .update({ is_active: !current.is_active })
+                .eq('id', idNum)
+                .select('id, position, business_name, is_active')
+                .single();
+            if (updateErr)
+                throw new Error(updateErr.message);
+            return updated;
+        }
         if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`UPDATE ranking 
          SET is_active = NOT is_active 
@@ -187,6 +289,20 @@ class AdminService {
         const idNum = Number(cardId);
         const now = new Date();
         const newEndTime = new Date(now.getTime() + durationHours * 3600 * 1000);
+        if (supabase_1.supabase) {
+            const { data: updated, error } = await supabase_1.supabase
+                .from('ranking')
+                .update({ end_time: newEndTime.toISOString(), is_active: true })
+                .eq('id', idNum)
+                .select()
+                .maybeSingle();
+            if (error)
+                throw new Error(error.message);
+            if (!updated) {
+                throw new Error(`Tarjeta con ID ${cardId} no encontrada`);
+            }
+            return updated;
+        }
         if (db_1.db.isPostgresActive) {
             const res = await db_1.db.query(`UPDATE ranking 
          SET end_time = $1, is_active = TRUE 
@@ -211,6 +327,46 @@ class AdminService {
      */
     async deleteCard(cardId) {
         const idNum = Number(cardId);
+        if (supabase_1.supabase) {
+            const { data: existing, error: fetchErr } = await supabase_1.supabase
+                .from('ranking')
+                .select('position')
+                .eq('id', idNum)
+                .maybeSingle();
+            if (fetchErr)
+                throw new Error(fetchErr.message);
+            if (!existing) {
+                throw new Error(`Tarjeta con ID ${cardId} no encontrada`);
+            }
+            const { data: resetCard, error: updateErr } = await supabase_1.supabase
+                .from('ranking')
+                .update({
+                business_name: 'Espacio Publicitario Disponible ✨',
+                target_url: 'https://venfidata.com/#ranking',
+                slogan: 'Coloca tu negocio aquí frente a miles de compradores diarios en toda Venezuela por solo $5.',
+                category: '¡Tu Marca Aquí!',
+                avatar: '🚀',
+                tier: 'dark',
+                amount_paid: 0.00,
+                user_id: null,
+                payment_id: null,
+                start_time: new Date().toISOString(),
+                end_time: null,
+                clicks_received: 0,
+                views_received: 0,
+                is_active: true
+            })
+                .eq('id', idNum)
+                .select()
+                .single();
+            if (updateErr)
+                throw new Error(updateErr.message);
+            return {
+                success: true,
+                message: `Tarjeta del puesto #${existing.position} restablecida como espacio disponible.`,
+                data: resetCard
+            };
+        }
         if (db_1.db.isPostgresActive) {
             const getRes = await db_1.db.query('SELECT position FROM ranking WHERE id = $1', [idNum]);
             if (getRes.rows.length === 0) {
@@ -262,6 +418,61 @@ class AdminService {
             success: true,
             message: `Tarjeta del puesto #${card.position} restablecida como espacio disponible.`,
             data: card
+        };
+    }
+    /**
+     * Obtiene los KPIs globales del Centro de Control (Ingresos, Pautas Activas, Clics, Usuarios)
+     */
+    async getKpis() {
+        if (supabase_1.supabase) {
+            const [paymentsRes, rankingRes, usersRes] = await Promise.all([
+                supabase_1.supabase.from('payments').select('amount_usd, status').eq('status', 'completed'),
+                supabase_1.supabase.from('ranking').select('id, is_active, clicks_received, user_id'),
+                supabase_1.supabase.from('users').select('id', { count: 'exact', head: true })
+            ]);
+            if (paymentsRes.error)
+                throw new Error(paymentsRes.error.message);
+            if (rankingRes.error)
+                throw new Error(rankingRes.error.message);
+            if (usersRes.error)
+                throw new Error(usersRes.error.message);
+            const totalRevenue = (paymentsRes.data || []).reduce((acc, p) => acc + Number(p.amount_usd || 0), 0);
+            const rankingRows = rankingRes.data || [];
+            const activeAdsCount = rankingRows.filter((r) => r.is_active !== false).length;
+            const totalClicks = rankingRows.reduce((acc, r) => acc + Number(r.clicks_received || 0), 0);
+            const registeredUsers = usersRes.count || 0;
+            return {
+                totalRevenue: Number(totalRevenue.toFixed(2)),
+                activeAdsCount,
+                totalClicks,
+                registeredUsers
+            };
+        }
+        if (db_1.db.isPostgresActive) {
+            const [revRes, adsRes, usersRes] = await Promise.all([
+                db_1.db.query("SELECT COALESCE(SUM(amount_usd), 0) AS total_revenue FROM payments WHERE status = 'completed'"),
+                db_1.db.query("SELECT COUNT(*) FILTER (WHERE is_active = TRUE) AS active_ads, COALESCE(SUM(clicks_received), 0) AS total_clicks FROM ranking"),
+                db_1.db.query("SELECT COUNT(*) AS total_users FROM users")
+            ]);
+            return {
+                totalRevenue: Number(Number(revRes.rows[0]?.total_revenue || 0).toFixed(2)),
+                activeAdsCount: Number(adsRes.rows[0]?.active_ads || 0),
+                totalClicks: Number(adsRes.rows[0]?.total_clicks || 0),
+                registeredUsers: Number(usersRes.rows[0]?.total_users || 0)
+            };
+        }
+        const store = db_1.db.getInMemoryStore();
+        const totalRevenue = (store.payments || [])
+            .filter((p) => p.status === 'completed')
+            .reduce((acc, p) => acc + Number(p.amount_usd || 0), 0);
+        const activeAdsCount = (store.ranking || []).filter((r) => r.is_active !== false).length;
+        const totalClicks = (store.ranking || []).reduce((acc, r) => acc + Number(r.clicks_received || 0), 0);
+        const registeredUsers = (store.users || []).length;
+        return {
+            totalRevenue: Number(totalRevenue.toFixed(2)),
+            activeAdsCount,
+            totalClicks,
+            registeredUsers
         };
     }
 }
